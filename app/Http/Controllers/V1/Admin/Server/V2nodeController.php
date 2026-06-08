@@ -22,7 +22,7 @@ class V2nodeController extends Controller
             'port' => 'required',
             'server_port' => 'required',
             'protocol' => 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls',
-            'tls' => 'required|in:0,1,2',
+            'tls' => 'required|in:0,1,2,3',
             'tls_settings' => 'nullable|array',
             'flow' => 'nullable|in:xtls-rprx-vision',
             'network' => 'required|in:tcp,ws,grpc,http,httpupgrade,xhttp',
@@ -44,6 +44,8 @@ class V2nodeController extends Controller
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
         ]);
+        $params['tls'] = (int)$params['tls'];
+
         if ($params['protocol'] == 'anytls' && $params['tls'] === 0) {
             $params['tls'] = 1;
         }
@@ -80,6 +82,52 @@ class V2nodeController extends Controller
                         $params['tls_settings']['ech_config'] = $echPair['ech_config'];
                     }
                 }
+            }
+        }
+        if ($params['tls'] === 3) {
+            if ($params['protocol'] !== 'shadowsocks') {
+                abort(500, 'ShadowTLS is only supported for Shadowsocks nodes.');
+            }
+
+            $tlsSettings = $params['tls_settings'] ?? null;
+            if (!is_array($tlsSettings)) {
+                abort(500, 'ShadowTLS settings are required.');
+            }
+
+            if ($params['network'] === 'http') {
+                abort(500, 'ShadowTLS cannot be combined with http transport.');
+            }
+
+            if (!empty($params['obfs']) || !empty($params['obfs_password'])) {
+                abort(500, 'ShadowTLS cannot be combined with obfs.');
+            }
+
+            $shadowTlsVersionInput = $tlsSettings['shadow_tls_version'] ?? 2;
+            if (is_scalar($shadowTlsVersionInput) && trim((string)$shadowTlsVersionInput) === '') {
+                $shadowTlsVersionInput = 2;
+            }
+            $shadowTlsVersion = is_numeric($shadowTlsVersionInput) ? (int)$shadowTlsVersionInput : $shadowTlsVersionInput;
+
+            $wildcardSni = is_scalar($tlsSettings['wildcard_sni'] ?? null)
+                ? trim((string)$tlsSettings['wildcard_sni'])
+                : 'off';
+            if ($wildcardSni === '') {
+                $wildcardSni = 'off';
+            }
+
+            $shadowTlsPassword = $tlsSettings['shadow_tls_password'] ?? null;
+            $shadowTlsPassword = is_scalar($shadowTlsPassword) && trim((string)$shadowTlsPassword) !== ''
+                ? trim((string)$shadowTlsPassword)
+                : Helper::randomChar(16);
+
+            $params['tls_settings'] = $tlsSettings;
+            $params['tls_settings']['plugin'] = 'shadow-tls';
+            $params['tls_settings']['shadow_tls_version'] = $shadowTlsVersion;
+            $params['tls_settings']['shadow_tls_password'] = $shadowTlsPassword;
+            $params['tls_settings']['wildcard_sni'] = $wildcardSni;
+        } else {
+            if ((int)$params['tls'] === 0) {
+                $params['tls_settings'] = null;
             }
         }
         if (isset($params['network_settings'])) {

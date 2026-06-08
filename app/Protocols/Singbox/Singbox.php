@@ -9,6 +9,7 @@ class Singbox
     private $servers;
     private $user;
     private $config;
+    private $internalOutbounds = [];
 
     public function __construct($user, $servers, array $options = null)
     {
@@ -22,7 +23,7 @@ class Singbox
         $this->config = $this->loadConfig();
         $proxies = $this->buildProxies();
         $outbounds = $this->addProxies($proxies);
-        $this->config['outbounds'] = $outbounds;
+        $this->config['outbounds'] = array_merge($outbounds, $this->internalOutbounds);
         $user = $this->user;
 
         return response(json_encode($this->config, JSON_UNESCAPED_SLASHES), 200)
@@ -45,6 +46,7 @@ class Singbox
     protected function buildProxies()
     {
         $proxies = [];
+        $this->internalOutbounds = [];
     
         foreach ($this->servers as $item) {
             if ($item['type'] === 'v2node') {
@@ -84,6 +86,14 @@ class Singbox
                     $proxies[] = $hysteria2Config;
                     break;
             }
+
+            $tlsSettings = $item['tls_settings'] ?? [];
+            if (($item['type'] ?? null) === 'shadowsocks'
+                && (int)($item['tls'] ?? 0) === 3
+                && ($tlsSettings['plugin'] ?? null) === 'shadow-tls'
+            ) {
+                $this->internalOutbounds[] = $this->buildShadowTlsOutbound($item);
+            }
         }
     
         return $proxies;
@@ -117,6 +127,12 @@ class Singbox
         $array['method'] = $server['cipher'];
         $array['password'] = $password;
         $array['domain_resolver'] = 'local';
+        $tlsSettings = $server['tls_settings'] ?? [];
+        if ((int)($server['tls'] ?? 0) === 3
+            && ($tlsSettings['plugin'] ?? null) === 'shadow-tls'
+        ) {
+            $array['detour'] = $this->buildShadowTlsOutboundTag($server);
+        }
         if (isset($server['obfs']) && $server['obfs'] === 'http') {
             $array['plugin'] = 'obfs-local';
             $plugin_opts_parts = [];
@@ -139,6 +155,44 @@ class Singbox
             $array['plugin_opts'] = implode(';', $plugin_opts_parts);
         }
         return $array;
+    }
+
+    protected function buildShadowTlsOutbound($server)
+    {
+        $tlsSettings = $server['tls_settings'] ?? [];
+        $shadowTls = trim((string)($tlsSettings['shadow_tls'] ?? ''));
+        $shadowTlsFirst = trim(explode(';', $shadowTls)[0] ?? '');
+        $shadowTlsSni = trim(explode(':', $shadowTlsFirst)[0] ?? '');
+        if ($shadowTlsSni === '') {
+            $shadowTlsSni = $server['host'];
+        }
+
+        return [
+            'tag' => $this->buildShadowTlsOutboundTag($server),
+            'type' => 'shadowtls',
+            'server' => $server['host'],
+            'server_port' => $server['port'],
+            'version' => (int)($tlsSettings['shadow_tls_version'] ?? 2),
+            'password' => $tlsSettings['shadow_tls_password'] ?? '',
+            'tls' => [
+                'enabled' => true,
+                'server_name' => $shadowTlsSni,
+                'utls' => [
+                    'enabled' => true,
+                    'fingerprint' => !empty($tlsSettings['fingerprint']) ? $tlsSettings['fingerprint'] : 'chrome',
+                ],
+            ],
+            'domain_resolver' => 'local',
+        ];
+    }
+
+    protected function buildShadowTlsOutboundTag($server)
+    {
+        if (isset($server['id'])) {
+            return 'shadowtls-' . $server['id'];
+        }
+
+        return 'shadowtls-' . substr(md5(($server['host'] ?? '') . ':' . ($server['port'] ?? '') . ':' . ($server['name'] ?? '')), 0, 12);
     }
 
 
