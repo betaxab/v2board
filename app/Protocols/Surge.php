@@ -117,6 +117,18 @@ class Surge
         }
         $config[] = 'fast-open=false';
         $config[] = 'udp=true';
+        $tlsSettings = $server['tls_settings'] ?? [];
+        if ((int)($server['tls'] ?? 0) === 3 && ($tlsSettings['plugin'] ?? null) === 'shadow-tls') {
+            $shadowTls = trim((string)($tlsSettings['shadow_tls'] ?? ''));
+            $shadowTlsFirst = trim(explode(';', $shadowTls)[0] ?? '');
+            $shadowTlsSni = trim(explode(':', $shadowTlsFirst)[0] ?? '');
+            if ($shadowTlsSni === '') {
+                $shadowTlsSni = $server['host'];
+            }
+            $config[] = "shadow-tls-sni={$shadowTlsSni}";
+            $config[] = 'shadow-tls-password=' . ($tlsSettings['shadow_tls_password'] ?? '');
+            $config[] = 'shadow-tls-version=' . ($tlsSettings['shadow_tls_version'] ?? 2);
+        }
         $uri = implode(',', $config);
         $uri .= "\r\n";
 

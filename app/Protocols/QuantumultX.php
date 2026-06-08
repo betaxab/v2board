@@ -33,6 +33,14 @@ class QuantumultX
             if (($item['type'] ?? null) === 'v2node' && isset($item['protocol'])) {
                 $item['type'] = $item['protocol'];
             }
+            // QX 不支持 shadow-tls
+            $tlsSettings = $item['tls_settings'] ?? [];
+            if (($item['type'] ?? null) === 'shadowsocks'
+                && (int)($item['tls'] ?? 0) === 3
+                && ($tlsSettings['plugin'] ?? null) === 'shadow-tls'
+            ) {
+                continue;
+            }
 
             // 提前过滤不支持的传输协议 (QX 不支持 gRPC, HTTPUpgrade, XHTTP)
             $network = $item['network'] ?? 'tcp';

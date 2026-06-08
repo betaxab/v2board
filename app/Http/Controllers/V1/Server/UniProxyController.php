@@ -229,6 +229,9 @@ class UniProxyController extends Controller
                     $response['server_key'] = Helper::getServerKey($this->nodeInfo->created_at, 32);
                 }
                 break;
+            case 'v2node':
+                $response = $this->buildV2nodeConfigResponse();
+                break;
             case 'vmess':
                 $response = [
                     'server_port' => $this->nodeInfo->server_port,
@@ -308,5 +311,45 @@ class UniProxyController extends Controller
         }
 
         return response($response)->header('ETag', "\"{$eTag}\"");
+    }
+
+    private function buildV2nodeConfigResponse(): array
+    {
+        $response = [
+            'listen_ip' => $this->nodeInfo->listen_ip,
+            'server_port' => $this->nodeInfo->server_port,
+            'network' => $this->nodeInfo->network,
+            'network_settings' => $this->nodeInfo->network_settings,
+            'protocol' => $this->nodeInfo->protocol,
+            'tls' => $this->nodeInfo->tls,
+            'tls_settings' => $this->nodeInfo->tls_settings,
+            'encryption' => $this->nodeInfo->encryption,
+            'encryption_settings' => $this->nodeInfo->encryption_settings,
+            'flow' => $this->nodeInfo->flow,
+            'cipher' => $this->nodeInfo->cipher,
+            'congestion_control' => $this->nodeInfo->congestion_control,
+            'zero_rtt_handshake' => $this->nodeInfo->zero_rtt_handshake ? true : false,
+            'up_mbps' => $this->nodeInfo->up_mbps,
+            'down_mbps' => $this->nodeInfo->down_mbps,
+            'obfs' => $this->nodeInfo->obfs,
+            'obfs_password' => $this->nodeInfo->obfs_password,
+            'padding_scheme' => $this->nodeInfo->padding_scheme
+        ];
+
+        if ($this->nodeInfo->cipher === '2022-blake3-aes-128-gcm') {
+            $response['server_key'] = Helper::getServerKey($this->nodeInfo->created_at, 16);
+        }
+
+        if ($this->nodeInfo->cipher === '2022-blake3-aes-256-gcm') {
+            $response['server_key'] = Helper::getServerKey($this->nodeInfo->created_at, 32);
+        }
+
+        if ($this->nodeInfo->up_mbps == 0 && $this->nodeInfo->down_mbps == 0) {
+            $response['ignore_client_bandwidth'] = true;
+        } else {
+            $response['ignore_client_bandwidth'] = false;
+        }
+
+        return $response;
     }
 }

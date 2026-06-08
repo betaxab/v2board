@@ -129,7 +129,25 @@ class ClashMeta
         $array['cipher'] = $server['cipher'];
         $array['password'] = $password;
         $array['udp'] = true;
-        if (isset($server['obfs']) && $server['obfs'] === 'http') {
+        $tlsSettings = $server['tls_settings'] ?? [];
+        if ((int)($server['tls'] ?? 0) === 3
+            && ($tlsSettings['plugin'] ?? null) === 'shadow-tls'
+        ) {
+            $shadowTls = trim((string)($tlsSettings['shadow_tls'] ?? ''));
+            $shadowTlsFirst = trim(explode(';', $shadowTls)[0] ?? '');
+            $shadowTlsSni = trim(explode(':', $shadowTlsFirst)[0] ?? '');
+            if ($shadowTlsSni === '') {
+                $shadowTlsSni = $server['host'];
+            }
+            $shadowTlsPassword = $tlsSettings['shadow_tls_password'] ?? null;
+            $array['plugin'] = 'shadow-tls';
+            $array['client-fingerprint'] = !empty($tlsSettings['fingerprint']) ? $tlsSettings['fingerprint'] : 'chrome';
+            $array['plugin-opts'] = [
+                'host' => $shadowTlsSni,
+                'password' => $shadowTlsPassword,
+                'version' => (int)($tlsSettings['shadow_tls_version'] ?? 2),
+            ];
+        } else if (isset($server['obfs']) && $server['obfs'] === 'http') {
             $array['plugin'] = 'obfs';
             $plugin_opts = [
                 'mode' => 'http'

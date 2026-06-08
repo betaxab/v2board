@@ -31,6 +31,14 @@ class Surfboard
             if (($item['type'] ?? null) === 'v2node' && isset($item['protocol'])) {
                 $item['type'] = $item['protocol'];
             }
+            // Surfboard 暂不支持 shadow-tls
+            $tlsSettings = $item['tls_settings'] ?? [];
+            if (($item['type'] ?? null) === 'shadowsocks'
+                && (int)($item['tls'] ?? 0) === 3
+                && ($tlsSettings['plugin'] ?? null) === 'shadow-tls'
+            ) {
+                continue;
+            }
             if ($item['type'] === 'shadowsocks'
                 && in_array($item['cipher'], [
                     'aes-128-gcm',

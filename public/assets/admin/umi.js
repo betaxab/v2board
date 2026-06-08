@@ -104688,9 +104688,14 @@
                   , ds = e.dest
                   , xv = e.xver
                   , fp = e.fingerprint
+                  , stp = e.plugin
+                  , stm = e.shadow_tls
+                  , stv = e.shadow_tls_version
+                  , stpwd = e.shadow_tls_password
+                  , wcs = e.wildcard_sni
                   , tls = this.state.tls
                   , cert_apply = this.state.cert_apply;
-                return y.a.createElement(y.a.Fragment, null, y.a.createElement("div", null, y.a.createElement("div", {
+                return y.a.createElement(y.a.Fragment, null, y.a.createElement("div", null, tls != 3 && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "Server Name(SNI)"), y.a.createElement(s["a"], {
                     value: t,
@@ -104714,7 +104719,7 @@
                     value: "dns"
                 }, "DNS\u7533\u8bf7"), y.a.createElement(N["a"].Option, {
                     value: "none"
-                }, "\u65e0\u8bc1\u4e66(\u5173\u95edTLS)"))), e.cert_mode == "dns" && cert_apply && y.a.createElement("div", {
+                }, "\u65e0\u8bc1\u4e66(\u5173\u95edTLS)"))), tls == 1 && e.cert_mode == "dns" && cert_apply && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "DNS\u89e3\u6790\u63d0\u4f9b\u5546Provider ", y.a.createElement("a", {
                     target: "_blank",
@@ -104725,7 +104730,7 @@
                     value: e.provider,
                     onChange: e=>this.change("provider", e.target.value),
                     placeholder: "\u4e66\u5199\u683c\u5f0fcloudflare"
-                })), e.cert_mode == "dns" && cert_apply && y.a.createElement("div", {
+                })), tls == 1 && e.cert_mode == "dns" && cert_apply && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "DNS env"), y.a.createElement(s["a"], {
                     value: e.dns_env,
@@ -104800,7 +104805,56 @@
                     value: sd,
                     onChange: e=>this.change("short_id", e.target.value),
                     placeholder: "\u7559\u7a7a\u81ea\u52a8\u751f\u6210"
-                })), y.a.createElement("div", {
+                })), tls == 3 && y.a.createElement("div", {
+                    className: "form-group"
+                }, y.a.createElement("label", null, "Plugin"), y.a.createElement(s["a"], {
+                    value: stp || "shadow-tls",
+                    disabled: !0
+                })), tls == 3 && y.a.createElement("div", {
+                    className: "form-group"
+                }, y.a.createElement("label", null, "ShadowTLS \u6620\u5c04"), y.a.createElement(s["a"], {
+                    value: stm,
+                    onChange: e=>this.change("shadow_tls", e.target.value),
+                    placeholder: "your.domain:127.0.0.1:8443;captive.apple.com;www.feishu.cn"
+                })), tls == 3 && y.a.createElement("div", {
+                    className: "form-group"
+                }, y.a.createElement("label", null, "ShadowTLS \u7248\u672c"), y.a.createElement(N["a"], {
+                    value: parseInt(stv) || 2,
+                    style: {
+                        width: "100%"
+                    },
+                    onChange: e=>this.change("shadow_tls_version", e)
+                }, y.a.createElement(N["a"].Option, {
+                    key: 2,
+                    value: 2
+                }, "2"), y.a.createElement(N["a"].Option, {
+                    key: 3,
+                    value: 3
+                }, "3"))), tls == 3 && y.a.createElement("div", {
+                    className: "form-group"
+                }, y.a.createElement("label", null, "ShadowTLS \u5bc6\u7801"), y.a.createElement(s["a"], {
+                    value: stpwd,
+                    onChange: e=>this.change("shadow_tls_password", e.target.value),
+                    placeholder: "\u7559\u7a7a\u81ea\u52a8\u751f\u6210"
+                })), tls == 3 && y.a.createElement("div", {
+                    className: "form-group"
+                }, y.a.createElement("label", null, "Wildcard SNI"), y.a.createElement(N["a"], {
+                    value: wcs || "off",
+                    style: {
+                        width: "100%"
+                    },
+                    onChange: e=>this.change("wildcard_sni", e)
+                }, y.a.createElement(N["a"].Option, {
+                    key: "off",
+                    value: "off"
+                }, "off"), y.a.createElement(N["a"].Option, {
+                    key: "authed",
+                    value: "authed"
+                }, "authed"), y.a.createElement(N["a"].Option, {
+                    key: "all",
+                    value: "all"
+                }, "all")
+                )), y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "FingerPrint"), y.a.createElement(N["a"], {
                     value: fp,
@@ -104838,34 +104892,34 @@
                 }, y.a.createElement("label", null, "Reject unknown sni"), y.a.createElement("div", null, y.a.createElement(f["a"], {
                     checked: parseInt(e.reject_unknown_sni),
                     onChange: e=>this.change("reject_unknown_sni", e ? "1" : "0")
-                }))), y.a.createElement("div", {
+                }))), tls != 3 && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "Allow Insecure"), y.a.createElement("div", null, y.a.createElement(f["a"], {
                     checked: parseInt(n),
                     onChange: e=>this.change("allow_insecure", e ? "1" : "0")
-                }))), y.a.createElement("div", {
+                }))), tls == 1 && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "ECH (Encrypted Client Hello)"), y.a.createElement(N["a"], {
                     value: e.ech || "",
                     style: { width: "100%" },
                     onChange: e=>this.change("ech", e),
                     placeholder: "\u9009\u62e9 ECH \u6a21\u5f0f"
-                }, y.a.createElement(N["a"].Option, { key: 0, value: "" }, "\u65e0"), y.a.createElement(N["a"].Option, { key: 1, value: "cloudflare" }, "Cloudflare"), y.a.createElement(N["a"].Option, { key: 2, value: "custom" }, "\u81ea\u5b9a\u4e49 SNI"))), e.ech === "cloudflare" && y.a.createElement("div", {
+                }, y.a.createElement(N["a"].Option, { key: 0, value: "" }, "\u65e0"), y.a.createElement(N["a"].Option, { key: 1, value: "cloudflare" }, "Cloudflare"), y.a.createElement(N["a"].Option, { key: 2, value: "custom" }, "\u81ea\u5b9a\u4e49 SNI"))), tls == 1 && e.ech === "cloudflare" && y.a.createElement("div", {
                     className: "form-group",
                     style: { background: "#f6ffed", padding: "8px 12px", borderRadius: "4px", border: "1px solid #b7eb8f" }
-                }, y.a.createElement("span", { style: { color: "#52c41a" } }, "\u2713 Cloudflare \u6258\u7ba1 ECH\uff0c\u5bc6\u94a5\u7531 Cloudflare \u81ea\u52a8\u7ba1\u7406\uff0c\u5ba2\u6237\u7aef\u4ece DNS \u81ea\u52a8\u83b7\u53d6\u914d\u7f6e\uff0c\u670d\u52a1\u7aef\u65e0\u9700\u914d\u7f6e")), e.ech === "custom" && y.a.createElement("div", {
+                }, y.a.createElement("span", { style: { color: "#52c41a" } }, "\u2713 Cloudflare \u6258\u7ba1 ECH\uff0c\u5bc6\u94a5\u7531 Cloudflare \u81ea\u52a8\u7ba1\u7406\uff0c\u5ba2\u6237\u7aef\u4ece DNS \u81ea\u52a8\u83b7\u53d6\u914d\u7f6e\uff0c\u670d\u52a1\u7aef\u65e0\u9700\u914d\u7f6e")), tls == 1 && e.ech === "custom" && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "ECH Server Name (\u4f2a\u88c5\u57df\u540d/\u5916\u5c42SNI)"), y.a.createElement(s["a"], {
                     value: e.ech_server_name || "",
                     onChange: e=>this.change("ech_server_name", e.target.value),
                     placeholder: "\u5fc5\u586b"
-                })), e.ech === "custom" && y.a.createElement("div", {
+                })), tls == 1 && e.ech === "custom" && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "ECH Key (\u670d\u52a1\u7aef\u79c1\u94a5)"), y.a.createElement(s["a"], {
                     value: e.ech_key || "",
                     onChange: e=>this.change("ech_key", e.target.value),
                     placeholder: "\u7559\u7a7a\u81ea\u52a8\u751f\u6210"
-                })), e.ech === "custom" && y.a.createElement("div", {
+                })), tls == 1 && e.ech === "custom" && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "ECH Config (\u5ba2\u6237\u7aef\u914d\u7f6e)"), y.a.createElement(s["a"], {
                     value: e.ech_config || "",
@@ -106190,6 +106244,50 @@
                             tls: 1
                         })
                     });
+                } else if (e === "protocol" && t === "shadowsocks") {
+                    var n = this.state.server.tls_settings || {};
+                    this.setState({
+                        server: I()({}, this.state.server, parseInt(this.state.server.tls) === 3 ? {
+                            protocol: t,
+                            tls: 3,
+                            tls_settings: I()({}, n, {
+                                plugin: "shadow-tls",
+                                shadow_tls_version: parseInt(n.shadow_tls_version) || 2,
+                                wildcard_sni: n.wildcard_sni || "off"
+                            })
+                        } : {
+                            protocol: t,
+                            tls: 0
+                        })
+                    });
+                } else if (e === "tls" && parseInt(t) === 3) {
+                    var r = this.state.server.tls_settings || {};
+                    this.setState({
+                        server: I()({}, this.state.server, {
+                            tls: 3,
+                            network: this.state.server.network === "http" ? "tcp" : this.state.server.network,
+                            obfs: null,
+                            obfs_password: null,
+                            tls_settings: I()({}, r, {
+                                plugin: "shadow-tls",
+                                shadow_tls_version: parseInt(r.shadow_tls_version) || 2,
+                                wildcard_sni: r.wildcard_sni || "off"
+                            })
+                        })
+                    });
+                } else if (e === "tls" && parseInt(t) === 0) {
+                    this.setState({
+                        server: I()({}, this.state.server, {
+                            tls: 0
+                        })
+                    });
+                } else if (e === "network" && t === "http" && parseInt(this.state.server.tls) === 3) {
+                    this.setState({
+                        server: I()({}, this.state.server, {
+                            network: t,
+                            tls: 0
+                        })
+                    });
                 } else {
                     this.setState({
                         server: I()({},
@@ -106342,27 +106440,30 @@
                 }, "VLess"), y.a.createElement(N["a"].Option, {
                     key: 6,
                     value: "vmess"
-                }, "VMess"))), e.protocol != null && e.protocol != "shadowsocks" && y.a.createElement("div", {
+                }, "VMess"))), e.protocol != null && y.a.createElement("div", {
                     className: "form-group col-md-6 col-xs-12"
-                }, y.a.createElement("label", null, "\u5b89\u5168\u6027 ", (parseInt(e.tls) != 0 || e.protocol == "hysteria2" || e.protocol == "trojan" || e.protocol == "tuic") && y.a.createElement("a", {
+                }, y.a.createElement("label", null, "\u5b89\u5168\u6027 ", ((e.protocol == "shadowsocks" && parseInt(e.tls) === 3) || (e.protocol != "shadowsocks" && (parseInt(e.tls) != 0 || e.protocol == "hysteria2" || e.protocol == "trojan" || e.protocol == "tuic"))) && y.a.createElement("a", {
                     href: "javascript:void(0);",
                     onClick: ()=>this.showChildDrawer("\u7f16\u8f91\u5b89\u5168\u6027\u914d\u7f6e", "tls_settings")
                 }, "\u7f16\u8f91\u914d\u7f6e")), y.a.createElement(N["a"], {
-                    value: parseInt(e.tls) || (e.protocol == "hysteria2" || e.protocol == "trojan" || e.protocol == "tuic" ? 1 : 0),
+                    value: e.protocol == "shadowsocks" ? (parseInt(e.tls) === 3 ? 3 : 0) : parseInt(e.tls) || (e.protocol == "hysteria2" || e.protocol == "trojan" || e.protocol == "tuic" ? 1 : 0),
                     style: {
                         width: "100%"
                     },
                     onChange: e=>this.formChange("tls", e)
-                }, (e.protocol == "vless" || e.protocol == "vmess") && y.a.createElement(N["a"].Option, {
+                }, (e.protocol == "vless" || e.protocol == "vmess" || e.protocol == "shadowsocks") && y.a.createElement(N["a"].Option, {
                     key: 0,
                     value: 0
-                }, "\u65e0"), y.a.createElement(N["a"].Option, {
+                }, "\u65e0"), e.protocol != "shadowsocks" && y.a.createElement(N["a"].Option, {
                     key: 1,
                     value: 1
                 }, "TLS"), (e.protocol == "vless" || e.protocol == "anytls") && y.a.createElement(N["a"].Option, {
                     key: 2,
                     value: 2
-                }, "Reality")))), e.protocol == "shadowsocks" && y.a.createElement("div", {
+                }, "Reality"), e.protocol == "shadowsocks" && y.a.createElement(N["a"].Option, {
+                    key: 3,
+                    value: 3
+                }, "ShadowTLS")))), e.protocol == "shadowsocks" && y.a.createElement("div", {
                     className: "row"
                 }, y.a.createElement("div", {
                     className: "form-group col-md-12 col-xs-12"

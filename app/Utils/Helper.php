@@ -172,7 +172,7 @@ class Helper
     {
         if ($server['type'] == 'v2node') {
             $server['type'] = $server['protocol'];
-        } 
+        }
         $method = "build" . ucfirst($server['type']) . "Uri";
 
         if (method_exists(self::class, $method)) {
@@ -211,7 +211,30 @@ class Helper
         $str = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode("{$cipher}:{$password}"));
         $add = self::formatHost($server['host']);
         $uri = "ss://{$str}@{$add}:{$server['port']}";
-        if ($server['obfs'] == 'http') {
+        $tlsSettings = $server['tls_settings'] ?? [];
+        if ((int)($server['tls'] ?? 0) === 3 && ($tlsSettings['plugin'] ?? null) === 'shadow-tls') {
+            $shadowTls = trim((string)($tlsSettings['shadow_tls'] ?? ''));
+            $shadowTlsFirst = trim(explode(';', $shadowTls)[0] ?? '');
+            $shadowTlsParts = array_map('trim', explode(':', $shadowTlsFirst));
+            $shadowTlsAddress = $shadowTlsParts[0] ?? $server['host'];
+            if ($shadowTlsAddress === '') {
+                $shadowTlsAddress = $server['host'];
+            }
+            $shadowTlsHost = $shadowTlsParts[1] ?? $shadowTlsAddress;
+            $shadowTlsPort = $shadowTlsParts[2] ?? '443';
+            if (isset($shadowTlsParts[1]) && ctype_digit($shadowTlsParts[1])) {
+                $shadowTlsHost = $shadowTlsAddress;
+                $shadowTlsPort = $shadowTlsParts[1];
+            }
+            $shadowTlsConfig = [
+                'address' => $shadowTlsAddress,
+                'password' => $tlsSettings['shadow_tls_password'] ?? '',
+                'version' => (string)($tlsSettings['shadow_tls_version'] ?? 2),
+                'host' => $shadowTlsHost,
+                'port' => (string)$shadowTlsPort,
+            ];
+            $uri .= '?shadow-tls=' . rawurlencode(base64_encode(json_encode($shadowTlsConfig)));
+        } else if ($server['obfs'] == 'http') {
             $uri .= "?plugin=obfs-local;obfs=http;obfs-host={$server['obfs-host']};path={$server['obfs-path']}";
         } else if ((($server['network'] ?? null) == 'http') && isset($server['network_settings']['Host'])) {
             $path = $server['network_settings']['path'] ?? '/';
