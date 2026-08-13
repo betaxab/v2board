@@ -216,22 +216,13 @@ class Helper
             $shadowTls = trim((string)($tlsSettings['shadow_tls'] ?? ''));
             $shadowTlsFirst = trim(explode(';', $shadowTls)[0] ?? '');
             $shadowTlsParts = array_map('trim', explode(':', $shadowTlsFirst));
-            $shadowTlsAddress = $shadowTlsParts[0] ?? $server['host'];
-            if ($shadowTlsAddress === '') {
-                $shadowTlsAddress = $server['host'];
-            }
-            $shadowTlsHost = $shadowTlsParts[1] ?? $shadowTlsAddress;
-            $shadowTlsPort = $shadowTlsParts[2] ?? '443';
-            if (isset($shadowTlsParts[1]) && ctype_digit($shadowTlsParts[1])) {
-                $shadowTlsHost = $shadowTlsAddress;
-                $shadowTlsPort = $shadowTlsParts[1];
-            }
+            $shadowTlsHost = $shadowTlsParts[0] ?? '';
             $shadowTlsConfig = [
-                'address' => $shadowTlsAddress,
+                'address' => $server['host'],
                 'password' => $tlsSettings['shadow_tls_password'] ?? '',
                 'version' => (string)($tlsSettings['shadow_tls_version'] ?? 2),
                 'host' => $shadowTlsHost,
-                'port' => (string)$shadowTlsPort,
+                'port' => (string)$server['port'],
             ];
             $uri .= '?shadow-tls=' . rawurlencode(base64_encode(json_encode($shadowTlsConfig)));
         } else if ($server['obfs'] == 'http') {

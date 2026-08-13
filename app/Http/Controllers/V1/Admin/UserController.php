@@ -143,8 +143,10 @@ class UserController extends Controller
             if (!$plan) {
                 abort(500, '订阅计划不存在');
             }
-            $params['group_id'] = $plan->group_id;
-        } else {
+            if (!array_key_exists('group_id', $params)) {
+                $params['group_id'] = $plan->group_id;
+            }
+        } else if (!array_key_exists('group_id', $params)) {
             $params['group_id'] = null;
         }
         if ($request->input('invite_user_email')) {

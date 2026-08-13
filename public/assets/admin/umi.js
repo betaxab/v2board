@@ -22230,6 +22230,9 @@
                     visible: !0
                 }, ()=>{
                     this.props.dispatch({
+                        type: "serverGroup/fetch"
+                    }),
+                    this.props.dispatch({
                         type: "user/getUserInfoById",
                         id: this.props.userId
                     })
@@ -22274,6 +22277,7 @@
                   , t = e.user
                   , n = e.updateLoading
                   , h = this.props.plan.plans
+                  , b = this.props.serverGroup.groups
                   , f = this.state.visible;
                 return p.a.createElement(p.a.Fragment, null, p.a.cloneElement(this.props.children, {
                     onClick: ()=>this.show()
@@ -22396,6 +22400,25 @@
                     className: "form-group"
                 }, p.a.createElement("label", {
                     for: "example-text-input-alt"
+                }, "\u6743\u9650\u7ec4"), p.a.createElement(l["a"], {
+                    placeholder: "\u8bf7\u9009\u62e9\u7528\u6237\u6743\u9650\u7ec4",
+                    style: {
+                        width: "100%"
+                    },
+                    defaultValue: t.group_id || null,
+                    onChange: e=>this.formChange("group_id", e)
+                }, p.a.createElement(l["a"].Option, {
+                    value: null
+                }, "\u65e0"), b.map(e=>{
+                    return p.a.createElement(l["a"].Option, {
+                        key: e.id,
+                        value: e.id
+                    }, e.name)
+                }
+                ))), p.a.createElement("div", {
+                    className: "form-group"
+                }, p.a.createElement("label", {
+                    for: "example-text-input-alt"
                 }, "\u8d26\u6237\u72b6\u6001"), p.a.createElement(l["a"], {
                     style: {
                         width: "100%"
@@ -22409,6 +22432,31 @@
                     key: 0,
                     value: 0
                 }, "\u6b63\u5e38"))), p.a.createElement("div", {
+                    className: "form-group"
+                }, p.a.createElement("label", {
+                    for: "example-text-input-alt"
+                }, "\u9a8c\u8bc1\u72b6\u6001"), p.a.createElement(l["a"], {
+                    style: {
+                        width: "100%"
+                    },
+                    defaultValue: void 0 !== t.verification_status && null !== t.verification_status ? parseInt(t.verification_status) : 1,
+                    onChange: e=>this.formChange("verification_status", e)
+                }, p.a.createElement(l["a"].Option, {
+                    key: 0,
+                    value: 0
+                }, "\u7070\u8272 (Grey)"), p.a.createElement(l["a"].Option, {
+                    key: 1,
+                    value: 1
+                }, "\u6a59\u8272 (Orange)"), p.a.createElement(l["a"].Option, {
+                    key: 2,
+                    value: 2
+                }, "\u7eff\u8272 (Green)"), p.a.createElement(l["a"].Option, {
+                    key: 3,
+                    value: 3
+                }, "\u7ea2\u8272 (Red)"), p.a.createElement(l["a"].Option, {
+                    key: 4,
+                    value: 4
+                }, "\u6df1\u8272 (Dark)"))), p.a.createElement("div", {
                     className: "form-group"
                 }, p.a.createElement("label", {
                     for: "example-text-input-alt"
@@ -22505,10 +22553,12 @@
         }
         t["a"] = Object(m["c"])(e=>{
             var t = e.user
-              , n = e.plan;
+              , n = e.plan
+              , r = e.serverGroup;
             return {
                 user: t,
-                plan: n
+                plan: n,
+                serverGroup: r
             }
         }
         )(y)
@@ -70899,6 +70949,41 @@
                         }, e ? "\u5c01\u7981" : "\u6b63\u5e38")
                     }
                 }, {
+                    title: "\u9a8c\u8bc1\u72b6\u6001",
+                    dataIndex: "verification_status",
+                    key: "verification_status",
+                    sorter: !0,
+                    render: e=>{
+                        var t = {
+                            0: {
+                                color: "#8c8c8c",
+                                label: "\u7070\u8272"
+                            },
+                            1: {
+                                color: "orange",
+                                label: "\u6a59\u8272"
+                            },
+                            2: {
+                                color: "green",
+                                label: "\u7eff\u8272"
+                            },
+                            3: {
+                                color: "red",
+                                label: "\u7ea2\u8272"
+                            },
+                            4: {
+                                color: "#262626",
+                                label: "\u6df1\u8272"
+                            }
+                        }[parseInt(e)] || {
+                            color: "#8c8c8c",
+                            label: "-"
+                        };
+                        return g.a.createElement(h["a"], {
+                            color: t.color
+                        }, t.label)
+                    }
+                }, {
                     title: "\u8ba2\u9605",
                     dataIndex: "plan_name",
                     key: "plan_id",
@@ -71081,6 +71166,15 @@
                             value: e.id
                         }))]
                     }, {
+                        key: "group_id",
+                        title: "\u6743\u9650\u7ec4",
+                        condition: ["="],
+                        type: "select",
+                        options: M.map(e=>({
+                            key: e.name,
+                            value: e.id
+                        }))
+                    }, {
                         key: "transfer_enable",
                         title: "\u6d41\u91cf",
                         condition: [">=", ">", "<", "<="]
@@ -71112,6 +71206,27 @@
                         }, {
                             key: "\u5c01\u7981",
                             value: 1
+                        }]
+                    }, {
+                        key: "verification_status",
+                        title: "\u9a8c\u8bc1\u72b6\u6001",
+                        condition: ["="],
+                        type: "select",
+                        options: [{
+                            key: "\u7070\u8272 (Grey)",
+                            value: 0
+                        }, {
+                            key: "\u6a59\u8272 (Orange)",
+                            value: 1
+                        }, {
+                            key: "\u7eff\u8272 (Green)",
+                            value: 2
+                        }, {
+                            key: "\u7ea2\u8272 (Red)",
+                            value: 3
+                        }, {
+                            key: "\u6df1\u8272 (Dark)",
+                            value: 4
                         }]
                     }, {
                         key: "invite_by_email",
