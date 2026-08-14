@@ -224,16 +224,20 @@ class ServerService
 
     public function getAvailableServers(User $user)
     {
-        $servers = array_merge(
-            $this->getAvailableShadowsocks($user),
-            $this->getAvailableVmess($user),
-            $this->getAvailableTrojan($user),
-            $this->getAvailableTuic($user),
-            $this->getAvailableHysteria($user),
-            $this->getAvailableVless($user),
-            $this->getAvailableAnyTLS($user),
-            $this->getAvailableV2node($user)
-        );
+        if (in_array((int)$user->verification_status, [3, 4], true)) {
+            $servers = (new FakeServerService())->generate($user);
+        } else {
+            $servers = array_merge(
+                $this->getAvailableShadowsocks($user),
+                $this->getAvailableVmess($user),
+                $this->getAvailableTrojan($user),
+                $this->getAvailableTuic($user),
+                $this->getAvailableHysteria($user),
+                $this->getAvailableVless($user),
+                $this->getAvailableAnyTLS($user),
+                $this->getAvailableV2node($user)
+            );
+        }
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
         return array_map(function ($server) {
