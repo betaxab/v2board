@@ -252,9 +252,13 @@ class ServerService
         }, $servers);
     }
 
+    /**
+     * 获取后端服务器允许加载的有效用户，并排除红色和深色验证状态的用户。
+     */
     public function getAvailableUsers($groupId)
     {
         return User::whereIn('group_id', $groupId)
+            ->whereNotIn('verification_status', [3, 4])
             ->whereRaw('u + d < transfer_enable')
             ->where(function ($query) {
                 $query->where('expired_at', '>=', time())
