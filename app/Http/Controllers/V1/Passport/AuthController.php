@@ -91,6 +91,14 @@ class AuthController extends Controller
                 }
             } else {
                 $user->invite_user_id = $inviteCode->user_id ? $inviteCode->user_id : null;
+                // 红色和深色验证状态沿有效邀请关系继承。
+                if ($user->invite_user_id) {
+                    $inviterVerificationStatus = (int)User::where('id', $user->invite_user_id)
+                        ->value('verification_status');
+                    if (in_array($inviterVerificationStatus, [3, 4], true)) {
+                        $user->verification_status = $inviterVerificationStatus;
+                    }
+                }
                 if (!(int)config('v2board.invite_never_expire', 0)) {
                     $inviteCode->status = 1;
                     $inviteCode->save();
