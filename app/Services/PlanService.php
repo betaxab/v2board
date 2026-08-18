@@ -23,6 +23,19 @@ class PlanService
         return ($this->plan->capacity_limit - $count) > 0;
     }
 
+    /**
+     * 判断指定用户类型是否符合订阅计划的购买限制。
+     */
+    public static function isUserTypeAllowed(Plan $plan, string $userType): bool
+    {
+        $limitUserTypes = $plan->limit_user_types;
+        if (!is_array($limitUserTypes) || !$limitUserTypes) {
+            return true;
+        }
+
+        return in_array($userType, $limitUserTypes, true);
+    }
+
     public static function countActiveUsers()
     {
         return User::select(

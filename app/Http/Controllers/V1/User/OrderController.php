@@ -120,6 +120,12 @@ class OrderController extends Controller
             abort(500, __('Subscription plan does not exist'));
         }
 
+        // Restricting the types of users who can purchase
+        $userType = $userService->getUserType($user);
+        if (!PlanService::isUserTypeAllowed($plan, $userType)) {
+            abort(500, __('This subscription is not available for your account'));
+        }
+
         if ($user->plan_id !== $plan->id && !$planService->haveCapacity() && $request->input('period') !== 'reset_price') {
             abort(500, __('Current product is sold out'));
         }

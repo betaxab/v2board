@@ -82587,7 +82587,9 @@
                         two_year_price: null,
                         three_year_price: null,
                         onetime_price: null,
-                        reset_price: null
+                        reset_price: null,
+                        limit_user_types: [],
+                        hide_on_mismatch: 0
                     }
                 },
                 this.show = (()=>{
@@ -82810,6 +82812,40 @@
                     }, e.name)
                 }
                 ))), m.a.createElement("div", {
+                    className: "form-group"
+                }, m.a.createElement("label", {
+                    for: "example-text-input-alt"
+                }, "\u9650\u5236\u8d2d\u4e70\u7528\u6237"), m.a.createElement(_["a"], {
+                    mode: "multiple",
+                    allowClear: !0,
+                    placeholder: "\u4e0d\u9009\u62e9\u5219\u4e0d\u9650\u5236",
+                    style: {
+                        width: "100%"
+                    },
+                    value: this.state.record.limit_user_types || [],
+                    onChange: e=>{
+                        this.setState({
+                            record: d()({}, this.state.record, {
+                                limit_user_types: e
+                            })
+                        })
+                    }
+                }, m.a.createElement(_["a"].Option, {
+                    key: "new",
+                    value: "new"
+                }, "\u65b0\u7528\u6237"), m.a.createElement(_["a"].Option, {
+                    key: "old",
+                    value: "old"
+                }, "\u8001\u7528\u6237"))), m.a.createElement("div", {
+                    className: "form-group"
+                }, m.a.createElement(x["a"], {
+                    checked: !!this.state.record.hide_on_mismatch,
+                    onChange: e=>this.setState({
+                        record: d()({}, this.state.record, {
+                            hide_on_mismatch: e.target.checked ? 1 : 0
+                        })
+                    })
+                }, "\u4e0d\u5728\u5339\u914d\u8303\u56f4\u4e0d\u53ef\u89c1")), m.a.createElement("div", {
                     className: "form-group"
                 }, m.a.createElement("label", {
                     htmlFor: "example-text-input-alt"

@@ -96,5 +96,6 @@
     "Sending frequently, please try again later": "发送频繁，请稍后再试",
     "Current product is sold out": "当前商品已售罄",
     "There are too many password errors, please try again after :minute minutes.": "密码错误次数过多，请 :minute 分钟后再试",
+    "This subscription is not available for your account": "您暂时无法购买该订阅",
     "Reset failed, Please try again later": "重置失败，请稍后再试"
 }

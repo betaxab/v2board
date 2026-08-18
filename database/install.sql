@@ -217,6 +217,8 @@ CREATE TABLE `v2_plan` (
                            `reset_price` int(11) DEFAULT NULL,
                            `reset_traffic_method` tinyint(1) DEFAULT NULL,
                            `capacity_limit` int(11) DEFAULT NULL,
+                           `limit_user_types` varchar(255) DEFAULT NULL COMMENT '限制购买用户类型',
+                           `hide_on_mismatch` tinyint(1) NOT NULL DEFAULT '0' COMMENT '不匹配用户是否隐藏',
                            `created_at` int(11) NOT NULL,
                            `updated_at` int(11) NOT NULL,
                            PRIMARY KEY (`id`)

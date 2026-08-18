@@ -864,3 +864,7 @@ ALTER TABLE `v2_user`
 ADD COLUMN `verification_status` TINYINT UNSIGNED NOT NULL DEFAULT 0
 COMMENT '验证级别: 0=grey, 1=orange, 2=green, 3=red, 4=dark'
 AFTER `plan_id`;
+
+ALTER TABLE `v2_plan`
+ADD `limit_user_types` varchar(255) NULL COMMENT '限制购买用户类型' AFTER `capacity_limit`,
+ADD `hide_on_mismatch` tinyint(1) NOT NULL DEFAULT '0' COMMENT '不匹配用户是否隐藏' AFTER `limit_user_types`;

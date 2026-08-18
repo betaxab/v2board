@@ -11,6 +11,8 @@ class Plan extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'created_at' => 'timestamp',
-        'updated_at' => 'timestamp'
+        'updated_at' => 'timestamp',
+        'limit_user_types' => 'array',
+        'hide_on_mismatch' => 'boolean'
     ];
 }

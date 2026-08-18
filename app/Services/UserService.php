@@ -11,6 +11,9 @@ use App\Models\User;
 
 class UserService
 {
+    public const USER_TYPE_NEW = 'new';
+    public const USER_TYPE_OLD = 'old';
+
     private function calcResetDayByMonthFirstDay()
     {
         $today = date('d');
@@ -139,7 +142,7 @@ class UserService
             case ($plan->reset_traffic_method === 4): {
                 return 365;
             }
-        }    
+        }
         return null;
     }
 
@@ -149,6 +152,33 @@ class UserService
             return true;
         }
         return false;
+    }
+
+    /**
+     * 根据验证状态、注册时间和订阅购买记录判断用户类型。
+     */
+    public function getUserType(User $user): string
+    {
+        if ((int)$user->verification_status !== 2) {
+            return self::USER_TYPE_NEW;
+        }
+        if ((int)$user->created_at > strtotime('-3 months')) {
+            return self::USER_TYPE_NEW;
+        }
+
+        return $this->hasPurchasedSubscription($user) ? self::USER_TYPE_OLD : self::USER_TYPE_NEW;
+    }
+
+    /**
+     * 判断用户是否存在已完成或已折抵的订阅购买记录。
+     */
+    protected function hasPurchasedSubscription(User $user): bool
+    {
+        return Order::where('user_id', $user->id)
+            ->where('plan_id', '>', 0)
+            ->whereNotIn('period', ['deposit', 'reset_price'])
+            ->whereIn('status', [3, 4])
+            ->exists();
     }
 
     public function getAvailableUsers()
