@@ -82618,7 +82618,9 @@
             save() {
                 this.props.dispatch({
                     type: "plan/save",
-                    params: d()({}, this.state.record),
+                    params: d()({}, this.state.record, {
+                        hide_on_mismatch: this.state.record.hide_on_mismatch ? 1 : 0
+                    }),
                     callback: ()=>{
                         this.setState({
                             visible: !1
