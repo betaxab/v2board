@@ -571,6 +571,7 @@ CREATE TABLE `v2_user` (
                            `uuid` varchar(36) NOT NULL,
                            `group_id` int(11) DEFAULT NULL,
                            `plan_id` int(11) DEFAULT NULL,
+                           `verification_status` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '验证级别: 0=grey, 1=orange, 2=green, 3=red, 4=dark',
                            `speed_limit` int(11) DEFAULT NULL,
                            `auto_renewal` tinyint(4) DEFAULT '0',
                            `remind_expire` tinyint(4) DEFAULT '1',

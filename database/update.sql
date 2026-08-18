@@ -809,7 +809,7 @@ CREATE TABLE `v2_server_anytls` (
 ALTER TABLE `v2_user`
 ADD UNIQUE `token` (`token`);
 
-ALTER TABLE `v2_order` 
+ALTER TABLE `v2_order`
 ADD INDEX idx_user (`user_id`),
 ADD INDEX idx_user_status (`user_id`, `status`);
 
@@ -859,3 +859,8 @@ CHANGE `action_value` `action_value` text NULL AFTER `action`;
 
 ALTER TABLE `v2_server_v2node`
 ADD `trusted_x_forwarded_for` varchar(255) COLLATE 'utf8mb4_general_ci' NULL COMMENT '信任的x-forwarded-for头部' AFTER `network_settings`;
+
+ALTER TABLE `v2_user`
+ADD COLUMN `verification_status` TINYINT UNSIGNED NOT NULL DEFAULT 0
+COMMENT '验证级别: 0=grey, 1=orange, 2=green, 3=red, 4=dark'
+AFTER `plan_id`;
