@@ -126,9 +126,6 @@ class AuthController extends Controller
             Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
         }
 
-        $user->last_login_at = time();
-        $user->save();
-
         if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
             Cache::put(
                 CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip()),

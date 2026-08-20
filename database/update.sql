@@ -868,3 +868,6 @@ AFTER `plan_id`;
 ALTER TABLE `v2_plan`
 ADD `limit_user_types` varchar(255) NULL COMMENT '限制购买用户类型' AFTER `capacity_limit`,
 ADD `hide_on_mismatch` tinyint(1) NOT NULL DEFAULT '0' COMMENT '不匹配用户是否隐藏' AFTER `limit_user_types`;
+
+ALTER TABLE `v2_user`
+CHANGE `last_login_ip` `last_login_ip` varchar(45) NULL DEFAULT NULL AFTER `is_staff`;

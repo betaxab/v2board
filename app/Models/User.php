@@ -11,6 +11,8 @@ class User extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'created_at' => 'timestamp',
-        'updated_at' => 'timestamp'
+        'updated_at' => 'timestamp',
+        'last_login_at' => 'timestamp',
+        'last_login_ip' => 'string'
     ];
 }

@@ -19,6 +19,16 @@ class AuthService
         $this->user = $user;
     }
 
+    /**
+     * 记录用户最近一次成功登录的时间和 IP 地址。
+     */
+    private function updateLastLogin(Request $request): void
+    {
+        $this->user->last_login_at = time();
+        $this->user->last_login_ip = $request->ip();
+        $this->user->save();
+    }
+
     public function generateAuthData(Request $request)
     {
         $guid = Helper::guid();
@@ -32,6 +42,7 @@ class AuthService
             'ua' => $request->userAgent(),
             'auth_data' => $authData
         ]);
+        $this->updateLastLogin($request);
         return [
             'token' => $this->user->token,
             'is_admin' => $this->user->is_admin,

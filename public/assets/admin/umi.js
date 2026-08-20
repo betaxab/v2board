@@ -22457,6 +22457,18 @@
                     key: 4,
                     value: 4
                 }, "\u6df1\u8272 (Dark)"))), p.a.createElement("div", {
+                    className: "row"
+                }, p.a.createElement("div", {
+                    className: "form-group col-md-6 col-xs-12"
+                }, p.a.createElement("label", null, "\u4e0a\u6b21\u767b\u5f55\u65f6\u95f4"), p.a.createElement(u["a"], {
+                    readOnly: !0,
+                    value: t.last_login_at ? v()(1e3 * t.last_login_at).format("YYYY-MM-DD HH:mm:ss") : "\u4ece\u672a\u767b\u5f55"
+                })), p.a.createElement("div", {
+                    className: "form-group col-md-6 col-xs-12"
+                }, p.a.createElement("label", null, "\u4e0a\u6b21\u767b\u5f55 IP"), p.a.createElement(u["a"], {
+                    readOnly: !0,
+                    value: t.last_login_ip || "-"
+                }))), p.a.createElement("div", {
                     className: "form-group"
                 }, p.a.createElement("label", {
                     for: "example-text-input-alt"
@@ -70984,6 +70996,14 @@
                         }, t.label)
                     }
                 }, {
+                    title: "\u4e0a\u6b21\u767b\u5f55\u65f6\u95f4",
+                    dataIndex: "last_login_at",
+                    key: "last_login_at",
+                    sorter: !0,
+                    render: e=>{
+                        return e ? w()(1e3 * e).format("YYYY/MM/DD HH:mm") : "-"
+                    }
+                }, {
                     title: "\u8ba2\u9605",
                     dataIndex: "plan_name",
                     key: "plan_id",
@@ -71301,7 +71321,7 @@
                     }),
                     columns: N,
                     scroll: {
-                        x: 1500
+                        x: 1670
                     },
                     onChange: (e,t,n)=>this.tableOnChange(e, n)
                 }, g.a.createElement("ul", {
