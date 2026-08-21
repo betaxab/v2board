@@ -39,6 +39,7 @@ class Kernel extends ConsoleKernel
         // reset
         $schedule->command('reset:traffic')->daily();
         $schedule->command('reset:log')->daily();
+        $schedule->command('risk:refresh-ip-blacklist')->dailyAt('1:30')->withoutOverlapping();
         // send
         $schedule->command('send:remindMail')->dailyAt('11:30');
         // horizon metrics

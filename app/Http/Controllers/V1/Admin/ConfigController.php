@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
+use App\Services\IpRiskRefreshService;
 use App\Services\TelegramService;
 use App\Utils\Dict;
 use Illuminate\Http\Request;
@@ -14,6 +15,16 @@ use Illuminate\Support\Facades\Cache;
 
 class ConfigController extends Controller
 {
+    private $ipRiskRefreshService;
+
+    /**
+     * 注入 IP 风险黑名单刷新服务。
+     */
+    public function __construct(?IpRiskRefreshService $ipRiskRefreshService = null)
+    {
+        $this->ipRiskRefreshService = $ipRiskRefreshService ?: new IpRiskRefreshService();
+    }
+
     public function getEmailTemplate()
     {
         $path = resource_path('views/mail/');
@@ -171,6 +182,12 @@ class ConfigController extends Controller
                 'password_limit_enable' => (int)config('v2board.password_limit_enable', 1),
                 'password_limit_count' => config('v2board.password_limit_count', 5),
                 'password_limit_expire' => config('v2board.password_limit_expire', 60)
+            ],
+            'risk' => [
+                'ip_risk_blacklist_enable' => (int)config('v2board.ip_risk_blacklist_enable', 0),
+                'ip_risk_blacklist_urls' => (string)config('v2board.ip_risk_blacklist_urls', ''),
+                'ip_risk_exception_rules' => (string)config('v2board.ip_risk_exception_rules', ''),
+                'ip_risk_refresh_status' => $this->ipRiskRefreshService->getLatestStatus()
             ]
         ];
         if ($key && isset($data[$key])) {
@@ -190,6 +207,7 @@ class ConfigController extends Controller
     {
         $data = $request->validated();
         $config = config('v2board');
+        $oldUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
         foreach (ConfigSave::RULES as $k => $v) {
             if (!in_array($k, array_keys(ConfigSave::RULES))) {
                 unset($config[$k]);
@@ -199,6 +217,9 @@ class ConfigController extends Controller
                 $config[$k] = $data[$k];
             }
         }
+        $newUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
+        $shouldRefresh = array_key_exists('ip_risk_blacklist_urls', $data)
+            && $this->ipRiskRefreshService->hasSubscriptionUrlChanges($oldUrlValue, $newUrlValue);
         $data = var_export($config, 1);
         if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
             abort(500, '修改失败');
@@ -209,15 +230,32 @@ class ConfigController extends Controller
             }
         }
         Artisan::call('config:cache');
+        $refreshStatus = null;
+        if ($shouldRefresh) {
+            try {
+                $refreshStatus = $this->ipRiskRefreshService
+                    ->refresh((string)$config['ip_risk_blacklist_urls']);
+            } catch (\Throwable $exception) {
+                $refreshStatus = $this->ipRiskRefreshService->recordUnexpectedFailure($newUrlValue);
+            }
+        }
         if(Cache::has('WEBMANPID')) {
             $pid = Cache::get('WEBMANPID');
             Cache::forget('WEBMANPID');
-            return response([
+            $response = [
                 'data' => posix_kill($pid, 15)
-            ]);
+            ];
+            if ($refreshStatus !== null) {
+                $response['refresh_status'] = $refreshStatus;
+            }
+            return response($response);
         }
-        return response([
+        $response = [
             'data' => true
-        ]);
+        ];
+        if ($refreshStatus !== null) {
+            $response['refresh_status'] = $refreshStatus;
+        }
+        return response($response);
     }
 }

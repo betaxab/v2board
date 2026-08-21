@@ -11,6 +11,7 @@ use App\Models\InviteCode;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\IpRiskAuthService;
 use App\Utils\CacheKey;
 use App\Utils\Dict;
 use App\Utils\Helper;
@@ -20,6 +21,16 @@ use ReCaptcha\ReCaptcha;
 
 class AuthController extends Controller
 {
+    private $ipRiskAuthService;
+
+    /**
+     * 注入认证阶段使用的 IP 风控服务。
+     */
+    public function __construct(IpRiskAuthService $ipRiskAuthService)
+    {
+        $this->ipRiskAuthService = $ipRiskAuthService;
+    }
+
     public function register(AuthRegister $request)
     {
         if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
@@ -119,9 +130,12 @@ class AuthController extends Controller
             }
         }
 
+        $riskOutcome = $this->ipRiskAuthService->prepareRegistration($user, $request->ip());
+
         if (!$user->save()) {
             abort(500, __('Register failed'));
         }
+        $this->ipRiskAuthService->recordRegistrationMatch($user, $request->ip(), $riskOutcome);
         if ((int)config('v2board.email_verify', 0)) {
             Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
         }
@@ -179,6 +193,11 @@ class AuthController extends Controller
             abort(500, __('Your account has been suspended'));
         }
 
+        $this->ipRiskAuthService->enforceLogin(
+            $user,
+            $request->ip(),
+            IpRiskAuthService::ENTRY_PASSWORD_LOGIN
+        );
         $authService = new AuthService($user);
         return response([
             'data' => $authService->generateAuthData($request)
@@ -210,6 +229,11 @@ class AuthController extends Controller
             if ($user->banned) {
                 abort(500, __('Your account has been suspended'));
             }
+            $this->ipRiskAuthService->enforceLogin(
+                $user,
+                $request->ip(),
+                IpRiskAuthService::ENTRY_TOKEN_LOGIN
+            );
             Cache::forget($key);
             $authService = new AuthService($user);
             return response([

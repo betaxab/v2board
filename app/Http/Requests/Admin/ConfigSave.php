@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\IpRiskService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConfigSave extends FormRequest
@@ -104,7 +105,29 @@ class ConfigSave extends FormRequest
         'password_limit_enable' => 'in:0,1',
         'password_limit_count' => 'integer',
         'password_limit_expire' => 'integer',
+        // risk
+        'ip_risk_blacklist_enable' => 'in:0,1',
+        'ip_risk_blacklist_urls' => ['nullable', 'string', 'max:65535'],
+        'ip_risk_exception_rules' => ['nullable', 'string', 'max:65535'],
     ];
+
+    /**
+     * 将已提交但为空的风险文本配置归一化为空字符串。
+     */
+    protected function prepareForValidation(): void
+    {
+        $normalized = [];
+        foreach (['ip_risk_blacklist_urls', 'ip_risk_exception_rules'] as $field) {
+            if ($this->exists($field) && $this->input($field) === null) {
+                $normalized[$field] = '';
+            }
+        }
+
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -124,6 +147,34 @@ class ConfigSave extends FormRequest
                 }
             }
         };
+
+        $rules['ip_risk_blacklist_urls'][] = function ($attribute, $value, $fail) {
+            $lines = preg_split('/\r\n|\r|\n/', (string)$value);
+            foreach (is_array($lines) ? $lines : [] as $index => $line) {
+                $url = trim($line);
+                if ($url === '') {
+                    continue;
+                }
+
+                $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+                $host = parse_url($url, PHP_URL_HOST);
+                if (filter_var($url, FILTER_VALIDATE_URL) === false
+                    || !in_array($scheme, ['http', 'https'], true)
+                    || !is_string($host)
+                    || $host === '') {
+                    $fail('黑名单订阅地址第 ' . ($index + 1) . ' 行格式不正确');
+                    return;
+                }
+            }
+        };
+
+        $rules['ip_risk_exception_rules'][] = function ($attribute, $value, $fail) {
+            $invalid = (new IpRiskService())->findInvalidRuleLine($value);
+            if ($invalid !== null) {
+                $fail('IP/CIDR例外第 ' . $invalid['line'] . ' 行格式不正确');
+            }
+        };
+
         return $rules;
     }
 

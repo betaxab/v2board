@@ -5655,7 +5655,24 @@
                   , w = e.app
                   , x = e.testSendMailLoading
                   , _ = e.safe
-                  , E = this.props.plan.plans;
+                  , R = e.risk
+                  , E = this.props.plan.plans
+                  , S = R.ip_risk_refresh_status || {}
+                  , T = {
+                    not_run: "\u5c1a\u672a\u8fd0\u884c",
+                    not_configured: "\u672a\u914d\u7f6e",
+                    success: "\u6210\u529f",
+                    partial_failure: "\u90e8\u5206\u5931\u8d25",
+                    total_failure: "\u5168\u90e8\u5931\u8d25"
+                }
+                  , I = {
+                    not_run: "secondary",
+                    not_configured: "info",
+                    success: "success",
+                    partial_failure: "warning",
+                    total_failure: "danger"
+                }
+                  , P = Array.isArray(S.failed_sources) ? S.failed_sources : [];
                 return f.a.createElement(d["a"], i()({}, this.props, {
                     title: "\u7cfb\u7edf\u914d\u7f6e"
                 }), f.a.createElement("div", {
@@ -5918,6 +5935,79 @@
                     defaultValue: _.password_limit_expire,
                     onChange: e=>this.set("safe", "password_limit_expire", e.target.value)
                 }))) : "")), f.a.createElement(s["a"].TabPane, {
+                    tab: "\u98ce\u63a7",
+                    key: "risk"
+                }, f.a.createElement("div", {
+                    className: ""
+                }, f.a.createElement(m, {
+                    title: "\u542f\u7528IP\u9ed1\u540d\u5355",
+                    description: "\u5f00\u542f\u540e\uff0c\u767b\u5f55\u6216\u6ce8\u518c\u4f7f\u7528\u8ba2\u9605\u9ed1\u540d\u5355\u4e2d\u7684IP\u5730\u5740\u65f6\u5c06\u88ab\u6807\u8bb0\u4e3a\u7ea2\u8272\u3002"
+                }, f.a.createElement(l["a"], {
+                    checked: parseInt(R.ip_risk_blacklist_enable),
+                    onChange: e=>this.set("risk", "ip_risk_blacklist_enable", e ? 1 : 0)
+                })), f.a.createElement(m, {
+                    title: "\u9ed1\u540d\u5355\u8ba2\u9605\u5730\u5740",
+                    description: "\u6bcf\u884c\u4e00\u4e2aHTTP(S) URL\u3002"
+                }, f.a.createElement("textarea", {
+                    rows: "6",
+                    type: "text",
+                    className: "form-control",
+                    placeholder: "https://example.com/blacklist.txt",
+                    defaultValue: R.ip_risk_blacklist_urls,
+                    onChange: e=>this.set("risk", "ip_risk_blacklist_urls", e.target.value)
+                })), f.a.createElement(m, {
+                    title: "IP/CIDR\u4f8b\u5916",
+                    description: "\u6bcf\u884c\u4e00\u4e2aIP\u5730\u5740\u6216CIDR\u3002"
+                }, f.a.createElement("textarea", {
+                    rows: "6",
+                    type: "text",
+                    className: "form-control",
+                    placeholder: "192.0.2.0/24",
+                    defaultValue: R.ip_risk_exception_rules,
+                    onChange: e=>this.set("risk", "ip_risk_exception_rules", e.target.value)
+                })), f.a.createElement("div", {
+                    className: "row",
+                    style: {
+                        padding: "20px",
+                        borderBottom: "1px solid #eee"
+                    }
+                }, f.a.createElement("div", {
+                    className: "col-lg-6"
+                }, f.a.createElement("div", {
+                    style: {
+                        fontWeight: "bold",
+                        marginBottom: 5
+                    }
+                }, "\u6700\u65b0\u5237\u65b0\u72b6\u6001"), f.a.createElement("div", {
+                    style: {
+                        fontSize: 12,
+                        color: "#666"
+                    }
+                }, "\u6700\u540e\u8fd0\u884c\uff1a", S.completed_at ? new Date(1e3 * S.completed_at).toLocaleString() : "-")), f.a.createElement("div", {
+                    className: "col-lg-6 text-right"
+                }, f.a.createElement("span", {
+                    className: "badge badge-".concat(I[S.outcome] || I.not_run)
+                }, T[S.outcome] || T.not_run), f.a.createElement("div", {
+                    style: {
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: "#666",
+                        lineHeight: 1.8
+                    }
+                }, "\u6765\u6e90\uff1a", S.source_count || 0, " | \u5237\u65b0\uff1a", S.refreshed_count || 0, " | \u5931\u8d25\uff1a", S.failed_count || 0, f.a.createElement("br", null), "\u4fdd\u7559\uff1a", S.retained_count || 0, " | \u89c4\u5219\uff1a", S.rule_count || 0, " | \u975e\u6cd5\u884c\uff1a", S.invalid_line_count || 0), P.length ? f.a.createElement("div", {
+                    style: {
+                        marginTop: 8,
+                        fontSize: 12,
+                        textAlign: "left",
+                        wordBreak: "break-all"
+                    }
+                }, f.a.createElement("div", {
+                    style: {
+                        fontWeight: "bold"
+                    }
+                }, "\u5931\u8d25\u6765\u6e90"), P.map((e,t)=>f.a.createElement("div", {
+                    key: t
+                }, e.source, " (", e.error, ")"))) : null)))), f.a.createElement(s["a"].TabPane, {
                     tab: "\u8ba2\u9605",
                     key: "subscribe"
                 }, f.a.createElement("div", {
@@ -16795,6 +16885,7 @@
             telegram: {},
             app: {},
             safe: {},
+            risk: {},
             tabs: "site",
             fetchLoading: !1,
             emailTemplate: [],

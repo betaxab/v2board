@@ -38,7 +38,12 @@ class CacheKey
         'LAST_SEND_LOGIN_WITH_MAIL_LINK_TIMESTAMP' => '最后一次发送登入链接时间',
         'PASSWORD_ERROR_LIMIT' => '密码错误次数限制',
         'USER_SESSIONS' => '用户session',
-        'FORGET_REQUEST_LIMIT' => '找回密码次数限制'
+        'FORGET_REQUEST_LIMIT' => '找回密码次数限制',
+        'IP_RISK_BLACKLIST_SNAPSHOT' => 'IP风险黑名单快照',
+        'IP_RISK_BLACKLIST_SOURCE' => 'IP风险黑名单单源快照',
+        'IP_RISK_BLACKLIST_SOURCES' => 'IP风险黑名单来源索引',
+        'IP_RISK_BLACKLIST_REFRESH_STATUS' => 'IP风险黑名单刷新状态',
+        'IP_RISK_BLACKLIST_REFRESH_LOCK' => 'IP风险黑名单刷新锁'
     ];
 
     public static function get(string $key, $uniqueValue)
