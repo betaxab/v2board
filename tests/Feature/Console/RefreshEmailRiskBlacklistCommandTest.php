@@ -2,24 +2,24 @@
 
 namespace Tests\Feature\Console;
 
-use App\Services\IpRiskRefreshService;
+use App\Services\EmailRiskRefreshService;
 use Illuminate\Support\Facades\Artisan;
 use Mockery;
 use Tests\TestCase;
 
-class RefreshIpRiskBlacklistCommandTest extends TestCase
+class RefreshEmailRiskBlacklistCommandTest extends TestCase
 {
     /**
-     * 默认启用 IP 风控，隔离命令开关用例。
+     * 默认启用邮件风控，隔离命令开关用例。
      */
     protected function setUp(): void
     {
         parent::setUp();
-        config(['v2board.ip_risk_blacklist_enable' => 1]);
+        config(['v2board.email_risk_blacklist_enable' => 1]);
     }
 
     /**
-     * 验证四种预期结果都只调用一次服务并以成功状态退出。
+     * 验证四种预期结果都只调用一次服务并输出聚合计数。
      *
      * @dataProvider outcomeProvider
      */
@@ -40,11 +40,11 @@ class RefreshIpRiskBlacklistCommandTest extends TestCase
                 ['source' => 'https://secret.example/list', 'error' => 'http_5xx'],
             ],
         ];
-        $service = Mockery::mock(IpRiskRefreshService::class);
+        $service = Mockery::mock(EmailRiskRefreshService::class);
         $service->shouldReceive('refreshScheduled')->once()->withNoArgs()->andReturn($status);
-        $this->app->instance(IpRiskRefreshService::class, $service);
+        $this->app->instance(EmailRiskRefreshService::class, $service);
 
-        $this->artisan('risk:refresh-ip-blacklist')
+        $this->artisan('risk:refresh-email-blacklist')
             ->expectsOutput(sprintf(
                 'outcome=%s sources=2 refreshed=1 failed=1 retained=1 rules=8 invalid=3',
                 $outcome
@@ -67,16 +67,16 @@ class RefreshIpRiskBlacklistCommandTest extends TestCase
     }
 
     /**
-     * 验证关闭 IP 风控时命令静默成功且不调用刷新服务。
+     * 验证关闭邮件风控时命令静默成功且不调用刷新服务。
      */
     public function testDisabledCommandSkipsServiceAndProducesNoOutput(): void
     {
-        config(['v2board.ip_risk_blacklist_enable' => 0]);
-        $service = Mockery::mock(IpRiskRefreshService::class);
+        config(['v2board.email_risk_blacklist_enable' => 0]);
+        $service = Mockery::mock(EmailRiskRefreshService::class);
         $service->shouldNotReceive('refreshScheduled');
-        $this->app->instance(IpRiskRefreshService::class, $service);
+        $this->app->instance(EmailRiskRefreshService::class, $service);
 
-        $this->assertSame(0, Artisan::call('risk:refresh-ip-blacklist'));
+        $this->assertSame(0, Artisan::call('risk:refresh-email-blacklist'));
         $this->assertSame('', Artisan::output());
     }
 
@@ -85,18 +85,18 @@ class RefreshIpRiskBlacklistCommandTest extends TestCase
      */
     public function testMarkerSkipProducesNoOutput(): void
     {
-        $service = Mockery::mock(IpRiskRefreshService::class);
+        $service = Mockery::mock(EmailRiskRefreshService::class);
         $service->shouldReceive('refreshScheduled')->once()->withNoArgs()->andReturnNull();
-        $this->app->instance(IpRiskRefreshService::class, $service);
+        $this->app->instance(EmailRiskRefreshService::class, $service);
 
-        $this->assertSame(0, Artisan::call('risk:refresh-ip-blacklist'));
+        $this->assertSame(0, Artisan::call('risk:refresh-email-blacklist'));
         $this->assertSame('', Artisan::output());
     }
 
     /**
-     * 验证内核每天固定时间执行并阻止调度重叠。
+     * 验证内核为 IP 和邮件刷新声明错峰非重叠日调度。
      */
-    public function testKernelDeclaresExactDailyNonOverlappingSchedule(): void
+    public function testKernelDeclaresExactStaggeredDailySchedules(): void
     {
         $source = file_get_contents(app_path('Console/Kernel.php'));
 

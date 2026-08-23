@@ -21,6 +21,11 @@ class AdminRiskSettingsBundleTest extends TestCase
         $this->assertStringContainsString('ip_risk_blacklist_enable', $source);
         $this->assertStringContainsString('ip_risk_blacklist_urls', $source);
         $this->assertStringContainsString('ip_risk_exception_rules', $source);
+        $this->assertStringContainsString('title: "\\u542f\\u7528\\u90ae\\u4ef6\\u9ed1\\u540d\\u5355"', $source);
+        $this->assertStringContainsString('title: "\\u90ae\\u4ef6\\u9ed1\\u540d\\u5355\\u8ba2\\u9605\\u5730\\u5740"', $source);
+        $this->assertStringContainsString('description: "\\u6bcf\\u884c\\u4e00\\u4e2aHTTP(S) URL\\u3002"', $source);
+        $this->assertStringContainsString('email_risk_blacklist_enable', $source);
+        $this->assertStringContainsString('email_risk_blacklist_urls', $source);
     }
 
     /**
@@ -42,10 +47,29 @@ class AdminRiskSettingsBundleTest extends TestCase
      */
     public function testRiskSwitchUsesIntegerPersistence(): void
     {
-        $snippet = $this->snippetAround($this->bundleSource(), 'ip_risk_blacklist_enable', 300);
+        $snippet = $this->snippetAround(
+            $this->bundleSource(),
+            'checked: parseInt(R.ip_risk_blacklist_enable)',
+            300
+        );
 
         $this->assertStringContainsString('checked: parseInt(R.ip_risk_blacklist_enable)', $snippet);
         $this->assertStringContainsString('this.set("risk", "ip_risk_blacklist_enable", e ? 1 : 0)', $snippet);
+    }
+
+    /**
+     * 验证邮件风控开关读取整数并持久化为零或一。
+     */
+    public function testEmailRiskSwitchUsesIntegerPersistence(): void
+    {
+        $snippet = $this->snippetAround(
+            $this->bundleSource(),
+            'checked: parseInt(R.email_risk_blacklist_enable)',
+            300
+        );
+
+        $this->assertStringContainsString('checked: parseInt(R.email_risk_blacklist_enable)', $snippet);
+        $this->assertStringContainsString('this.set("risk", "email_risk_blacklist_enable", e ? 1 : 0)', $snippet);
     }
 
     /**
@@ -71,7 +95,146 @@ class AdminRiskSettingsBundleTest extends TestCase
         return [
             'subscription URLs' => ['ip_risk_blacklist_urls'],
             'exception rules' => ['ip_risk_exception_rules'],
+            'email subscription URLs' => ['email_risk_blacklist_urls'],
         ];
+    }
+
+    /**
+     * 验证邮件控件追加在IP刷新状态之后且仍位于现有风控页签。
+     */
+    public function testEmailRiskControlsFollowIpStatusInsideExistingRiskTab(): void
+    {
+        $source = $this->bundleSource();
+        $riskTab = strpos($source, 'key: "risk"');
+        $ipEnable = strpos($source, 'ip_risk_blacklist_enable', $riskTab);
+        $ipUrls = strpos($source, 'ip_risk_blacklist_urls', $ipEnable);
+        $ipExceptions = strpos($source, 'ip_risk_exception_rules', $ipUrls);
+        $ipStatus = strpos($source, '"\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"', $riskTab);
+        $emailEnable = strpos($source, 'email_risk_blacklist_enable', $ipStatus);
+        $emailUrls = strpos($source, 'email_risk_blacklist_urls', $emailEnable);
+        $emailStatus = strpos(
+            $source,
+            '"\\u90ae\\u4ef6\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"',
+            $emailUrls
+        );
+        $subscribeTab = strpos($source, 'key: "subscribe"', $emailStatus);
+
+        $this->assertNotFalse($riskTab);
+        $this->assertNotFalse($ipEnable);
+        $this->assertNotFalse($ipUrls);
+        $this->assertNotFalse($ipExceptions);
+        $this->assertNotFalse($ipStatus);
+        $this->assertNotFalse($emailEnable);
+        $this->assertNotFalse($emailUrls);
+        $this->assertNotFalse($emailStatus);
+        $this->assertNotFalse($subscribeTab);
+        $this->assertLessThan($ipUrls, $ipEnable);
+        $this->assertLessThan($ipExceptions, $ipUrls);
+        $this->assertLessThan($ipStatus, $ipExceptions);
+        $this->assertLessThan($emailEnable, $ipStatus);
+        $this->assertLessThan($emailUrls, $emailEnable);
+        $this->assertLessThan($emailStatus, $emailUrls);
+        $this->assertLessThan($subscribeTab, $emailStatus);
+        $this->assertSame(1, substr_count($source, 'key: "risk"'));
+        $this->assertStringNotContainsString('key: "email-risk"', $source);
+        $this->assertStringNotContainsString('key: "email_risk"', $source);
+    }
+
+    /**
+     * 验证邮件配置展示独立刷新状态且不引入手动操作。
+     */
+    public function testEmailRiskControlsExposeIndependentRefreshStateWithoutManualAction(): void
+    {
+        $source = $this->bundleSource();
+        $snippet = $this->snippetAround(
+            $source,
+            '"\\u90ae\\u4ef6\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"',
+            2600
+        );
+
+        $this->assertStringContainsString('email_risk_refresh_status', $source);
+        foreach ([
+            'completed_at',
+            'source_count',
+            'refreshed_count',
+            'failed_count',
+            'retained_count',
+            'rule_count',
+            'invalid_line_count',
+        ] as $field) {
+            $this->assertStringContainsString($field, $snippet);
+        }
+        $this->assertStringContainsString('A.map', $snippet);
+        $this->assertStringContainsString('e.source', $snippet);
+        $this->assertStringContainsString('e.error', $snippet);
+        $this->assertStringNotContainsString('risk:refresh-email-blacklist', $source);
+        $this->assertStringNotContainsString('/config/refresh-email', $source);
+        $this->assertStringNotContainsString('manual_refresh', $source);
+    }
+
+    /**
+     * 验证两个风控域关闭时显示已禁用并将有效规则数归零。
+     */
+    public function testRiskStatusesRenderIndependentDisabledStateAndZeroRules(): void
+    {
+        $source = $this->bundleSource();
+        $definition = $this->snippetAround($source, 'ip_risk_refresh_status', 1900);
+        $ipSummary = $this->snippetAround(
+            $source,
+            '"\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"',
+            2400
+        );
+        $emailSummary = $this->snippetAround(
+            $source,
+            '"\\u90ae\\u4ef6\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"',
+            2400
+        );
+
+        $this->assertStringContainsString('disabled: "\\u5df2\\u7981\\u7528"', $definition);
+        $this->assertStringContainsString(
+            'parseInt(R.ip_risk_blacklist_enable) ? S.outcome || "not_run" : "disabled"',
+            $definition
+        );
+        $this->assertStringContainsString(
+            'parseInt(R.email_risk_blacklist_enable) ? O.outcome || "not_run" : "disabled"',
+            $definition
+        );
+        $this->assertStringContainsString(
+            'parseInt(R.ip_risk_blacklist_enable) ? S.rule_count || 0 : 0',
+            $ipSummary
+        );
+        $this->assertStringContainsString(
+            'parseInt(R.email_risk_blacklist_enable) ? O.rule_count || 0 : 0',
+            $emailSummary
+        );
+        $this->assertStringContainsString('S.completed_at', $ipSummary);
+        $this->assertStringContainsString('O.completed_at', $emailSummary);
+    }
+
+    /**
+     * 验证邮件区域使用精确文案且不在浏览器中转换多行值。
+     */
+    public function testEmailRiskSectionKeepsRawVisibleConfiguration(): void
+    {
+        $source = $this->bundleSource();
+        $start = strpos($source, 'title: "\\u542f\\u7528\\u90ae\\u4ef6\\u9ed1\\u540d\\u5355"');
+        $end = strpos(
+            $source,
+            '"\\u90ae\\u4ef6\\u6700\\u65b0\\u5237\\u65b0\\u72b6\\u6001"',
+            $start
+        );
+        $this->assertNotFalse($start);
+        $this->assertNotFalse($end);
+        $snippet = substr($source, $start, $end - $start);
+
+        $this->assertStringContainsString('title: "\\u90ae\\u4ef6\\u9ed1\\u540d\\u5355\\u8ba2\\u9605\\u5730\\u5740"', $snippet);
+        $this->assertStringContainsString('description: "\\u6bcf\\u884c\\u4e00\\u4e2aHTTP(S) URL\\u3002"', $snippet);
+        $this->assertStringContainsString('defaultValue: R.email_risk_blacklist_urls', $snippet);
+        $this->assertStringContainsString('e.target.value', $snippet);
+        $this->assertStringNotContainsString('.split(', $snippet);
+        $this->assertStringNotContainsString('.trim(', $snippet);
+        $this->assertStringNotContainsString('.map(', $snippet);
+        $this->assertStringNotContainsString('JSON.', $snippet);
     }
 
     /**

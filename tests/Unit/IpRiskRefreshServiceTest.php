@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Services\IpRiskRefreshService;
 use App\Services\IpRiskService;
 use App\Utils\CacheKey;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -294,6 +296,29 @@ class IpRiskRefreshServiceTest extends TestCase
             'oversized response' => ['response_too_large', str_repeat('x', 10485761), 200],
             'invalid content' => ['invalid_content', "invalid\n", 200],
         ];
+    }
+
+    /**
+     * 验证响应头超限异常被传输层包装后仍保持固定类别且不重试。
+     */
+    public function testWrappedOversizedHeaderFailureIsNotRetried(): void
+    {
+        $url = 'https://example.test/oversized-header';
+        $calls = 0;
+        Http::fake(function () use ($url, &$calls) {
+            $calls++;
+            throw new RequestException(
+                'An error was encountered during the on_headers event',
+                new Request('GET', $url),
+                null,
+                new \RuntimeException('response_too_large')
+            );
+        });
+
+        $status = (new IpRiskRefreshService())->refresh($url);
+
+        $this->assertSame('response_too_large', $status['failed_sources'][0]['error']);
+        $this->assertSame(1, $calls);
     }
 
     /**
@@ -676,5 +701,117 @@ class IpRiskRefreshServiceTest extends TestCase
 
         $this->assertSame(3600, $method->invoke($service, 1));
         $this->assertSame(3810, $method->invoke($service, 250));
+    }
+
+    /**
+     * 验证关闭 IP 只清理本域规则缓存并保留诊断状态和邮件缓存。
+     */
+    public function testDisableClearsOnlyIpRuleCachesAndRetainsLatestStatus(): void
+    {
+        $url = 'https://example.test/ip-disable.txt';
+        $hash = hash('sha256', $url);
+        Http::fake([$url => Http::response("203.0.113.7\n", 200)]);
+        $service = new IpRiskRefreshService(null, null, function (): void {
+        });
+        $service->refresh($url);
+        $cachedStatus = Cache::get(CacheKey::get('IP_RISK_BLACKLIST_REFRESH_STATUS', 'current'));
+        $emailState = [
+            'snapshot' => ['version' => 1, 'rules' => ['NAME,email@example.com']],
+            'source' => ['version' => 1, 'rules' => ['NAME,email@example.com']],
+            'sources' => ['email-hash'],
+            'status' => ['outcome' => 'success'],
+            'disabled' => true,
+        ];
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_SNAPSHOT', 'current'), $emailState['snapshot']);
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_SOURCE', 'email-hash'), $emailState['source']);
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_SOURCES', 'current'), $emailState['sources']);
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_REFRESH_STATUS', 'current'), $emailState['status']);
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_REFRESH_DISABLED', 'current'), true);
+        config(['v2board.ip_risk_blacklist_enable' => 0]);
+
+        $service->disableAndClearSnapshots();
+        $latest = $service->getLatestStatus();
+
+        $this->assertNull(Cache::get(CacheKey::get('IP_RISK_BLACKLIST_SNAPSHOT', 'current')));
+        $this->assertNull(Cache::get(CacheKey::get('IP_RISK_BLACKLIST_SOURCE', $hash)));
+        $this->assertNull(Cache::get(CacheKey::get('IP_RISK_BLACKLIST_SOURCES', 'current')));
+        $this->assertSame($cachedStatus, Cache::get(CacheKey::get(
+            'IP_RISK_BLACKLIST_REFRESH_STATUS',
+            'current'
+        )));
+        $this->assertTrue(Cache::get(CacheKey::get('IP_RISK_BLACKLIST_REFRESH_DISABLED', 'current')));
+        $this->assertFalse($latest['enabled']);
+        $this->assertSame('success', $latest['outcome']);
+        $this->assertSame($cachedStatus['completed_at'], $latest['completed_at']);
+        $this->assertSame(0, $latest['rule_count']);
+        $this->assertSame($emailState['snapshot'], Cache::get(CacheKey::get(
+            'EMAIL_RISK_BLACKLIST_SNAPSHOT',
+            'current'
+        )));
+        $this->assertSame($emailState['source'], Cache::get(CacheKey::get(
+            'EMAIL_RISK_BLACKLIST_SOURCE',
+            'email-hash'
+        )));
+        $this->assertSame($emailState['sources'], Cache::get(CacheKey::get(
+            'EMAIL_RISK_BLACKLIST_SOURCES',
+            'current'
+        )));
+        $this->assertSame($emailState['status'], Cache::get(CacheKey::get(
+            'EMAIL_RISK_BLACKLIST_REFRESH_STATUS',
+            'current'
+        )));
+    }
+
+    /**
+     * 验证关闭开关或关闭标记会让 IP 定时刷新静默跳过。
+     */
+    public function testScheduledRefreshSkipsWithoutNetworkStatusOrLogWhenDisabled(): void
+    {
+        $statusKey = CacheKey::get('IP_RISK_BLACKLIST_REFRESH_STATUS', 'current');
+        $snapshotKey = CacheKey::get('IP_RISK_BLACKLIST_SNAPSHOT', 'current');
+        $cachedStatus = ['outcome' => 'success', 'completed_at' => 1755691200];
+        $cachedSnapshot = ['version' => 1, 'rules' => ['203.0.113.7']];
+        Cache::forever($statusKey, $cachedStatus);
+        Cache::forever($snapshotKey, $cachedSnapshot);
+        config([
+            'v2board.ip_risk_blacklist_enable' => 0,
+            'v2board.ip_risk_blacklist_urls' => 'https://example.test/disabled.txt',
+        ]);
+        Http::fake();
+        $logs = [];
+        $service = new IpRiskRefreshService(null, null, function (array $record) use (&$logs): void {
+            $logs[] = $record;
+        });
+
+        $this->assertNull($service->refreshScheduled());
+        config(['v2board.ip_risk_blacklist_enable' => 1]);
+        Cache::forever(CacheKey::get('IP_RISK_BLACKLIST_REFRESH_DISABLED', 'current'), true);
+        $this->assertNull($service->refreshScheduled());
+
+        Http::assertNothingSent();
+        $this->assertSame([], $logs);
+        $this->assertSame($cachedStatus, Cache::get($statusKey));
+        $this->assertSame($cachedSnapshot, Cache::get($snapshotKey));
+    }
+
+    /**
+     * 验证显式重新启用会在本域锁内移除标记并发布新快照。
+     */
+    public function testRefreshAfterEnableClearsOnlyIpMarkerAndPublishesFreshSnapshot(): void
+    {
+        $url = 'https://example.test/ip-enabled.txt';
+        Cache::forever(CacheKey::get('IP_RISK_BLACKLIST_REFRESH_DISABLED', 'current'), true);
+        Cache::forever(CacheKey::get('EMAIL_RISK_BLACKLIST_REFRESH_DISABLED', 'current'), true);
+        Http::fake([$url => Http::response("198.51.100.9\n", 200)]);
+
+        $status = (new IpRiskRefreshService(null, null, function (): void {
+        }))->refreshAfterEnable($url);
+        $snapshot = Cache::get(CacheKey::get('IP_RISK_BLACKLIST_SNAPSHOT', 'current'));
+
+        $this->assertSame('success', $status['outcome']);
+        $this->assertNull(Cache::get(CacheKey::get('IP_RISK_BLACKLIST_REFRESH_DISABLED', 'current')));
+        $this->assertTrue(Cache::get(CacheKey::get('EMAIL_RISK_BLACKLIST_REFRESH_DISABLED', 'current')));
+        $this->assertSame(['198.51.100.9'], $snapshot['rules']);
+        $this->assertTrue((new IpRiskRefreshService())->getLatestStatus()['enabled']);
     }
 }
