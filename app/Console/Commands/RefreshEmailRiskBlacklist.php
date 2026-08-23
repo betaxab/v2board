@@ -2,32 +2,32 @@
 
 namespace App\Console\Commands;
 
-use App\Services\IpRiskRefreshService;
+use App\Services\EmailRiskRefreshService;
 use Illuminate\Console\Command;
 
-class RefreshIpRiskBlacklist extends Command
+class RefreshEmailRiskBlacklist extends Command
 {
-    protected $signature = 'risk:refresh-ip-blacklist';
+    protected $signature = 'risk:refresh-email-blacklist';
 
-    protected $description = '刷新 IP 风险黑名单订阅';
+    protected $description = '刷新邮件风险黑名单订阅';
 
     private $refreshService;
 
     /**
-     * 注入 IP 风险黑名单刷新服务。
+     * 注入邮件风险黑名单刷新服务。
      */
-    public function __construct(IpRiskRefreshService $refreshService)
+    public function __construct(EmailRiskRefreshService $refreshService)
     {
         parent::__construct();
         $this->refreshService = $refreshService;
     }
 
     /**
-     * 执行刷新并输出不含来源地址的结果计数。
+     * 启用时执行定时安全刷新并输出聚合计数。
      */
     public function handle(): int
     {
-        if (!(bool)config('v2board.ip_risk_blacklist_enable', 0)) {
+        if (!(bool)config('v2board.email_risk_blacklist_enable', 0)) {
             return self::SUCCESS;
         }
 

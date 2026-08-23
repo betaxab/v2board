@@ -11,6 +11,7 @@ use App\Models\InviteCode;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\EmailRiskAuthService;
 use App\Services\IpRiskAuthService;
 use App\Utils\CacheKey;
 use App\Utils\Dict;
@@ -22,15 +23,22 @@ use ReCaptcha\ReCaptcha;
 class AuthController extends Controller
 {
     private $ipRiskAuthService;
+    private $emailRiskAuthService;
 
     /**
-     * 注入认证阶段使用的 IP 风控服务。
+     * 注入认证阶段使用的 IP 和邮件风控服务。
      */
-    public function __construct(IpRiskAuthService $ipRiskAuthService)
-    {
+    public function __construct(
+        IpRiskAuthService $ipRiskAuthService,
+        EmailRiskAuthService $emailRiskAuthService
+    ) {
         $this->ipRiskAuthService = $ipRiskAuthService;
+        $this->emailRiskAuthService = $emailRiskAuthService;
     }
 
+    /**
+     * 完成注册校验、独立风控、用户保存和会话签发。
+     */
     public function register(AuthRegister $request)
     {
         if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
@@ -130,12 +138,26 @@ class AuthController extends Controller
             }
         }
 
-        $riskOutcome = $this->ipRiskAuthService->prepareRegistration($user, $request->ip());
+        $ipRiskOutcome = $this->ipRiskAuthService->prepareRegistration($user, $request->ip());
+        $emailRiskOutcome = $this->emailRiskAuthService->prepareRegistration($user, (string)$email);
+        $emailPersistence = $this->emailRiskAuthService->persistRegistration($user, $emailRiskOutcome);
 
-        if (!$user->save()) {
+        if (($emailPersistence['status'] ?? null) === EmailRiskAuthService::PERSIST_FAILED) {
+            if ($user->exists && $user->getKey() !== null) {
+                $this->emailRiskAuthService->recordRegistrationOutcome(
+                    $user,
+                    $emailRiskOutcome,
+                    $emailPersistence
+                );
+            }
             abort(500, __('Register failed'));
         }
-        $this->ipRiskAuthService->recordRegistrationMatch($user, $request->ip(), $riskOutcome);
+        $this->ipRiskAuthService->recordRegistrationMatch($user, $request->ip(), $ipRiskOutcome);
+        $this->emailRiskAuthService->recordRegistrationOutcome(
+            $user,
+            $emailRiskOutcome,
+            $emailPersistence
+        );
         if ((int)config('v2board.email_verify', 0)) {
             Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
         }

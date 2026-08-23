@@ -5658,7 +5658,9 @@
                   , R = e.risk
                   , E = this.props.plan.plans
                   , S = R.ip_risk_refresh_status || {}
+                  , O = R.email_risk_refresh_status || {}
                   , T = {
+                    disabled: "\u5df2\u7981\u7528",
                     not_run: "\u5c1a\u672a\u8fd0\u884c",
                     not_configured: "\u672a\u914d\u7f6e",
                     success: "\u6210\u529f",
@@ -5666,13 +5668,17 @@
                     total_failure: "\u5168\u90e8\u5931\u8d25"
                 }
                   , I = {
+                    disabled: "secondary",
                     not_run: "secondary",
                     not_configured: "info",
                     success: "success",
                     partial_failure: "warning",
                     total_failure: "danger"
                 }
-                  , P = Array.isArray(S.failed_sources) ? S.failed_sources : [];
+                  , C = parseInt(R.ip_risk_blacklist_enable) ? S.outcome || "not_run" : "disabled"
+                  , L = parseInt(R.email_risk_blacklist_enable) ? O.outcome || "not_run" : "disabled"
+                  , P = Array.isArray(S.failed_sources) ? S.failed_sources : []
+                  , A = Array.isArray(O.failed_sources) ? O.failed_sources : [];
                 return f.a.createElement(d["a"], i()({}, this.props, {
                     title: "\u7cfb\u7edf\u914d\u7f6e"
                 }), f.a.createElement("div", {
@@ -5986,15 +5992,15 @@
                 }, "\u6700\u540e\u8fd0\u884c\uff1a", S.completed_at ? new Date(1e3 * S.completed_at).toLocaleString() : "-")), f.a.createElement("div", {
                     className: "col-lg-6 text-right"
                 }, f.a.createElement("span", {
-                    className: "badge badge-".concat(I[S.outcome] || I.not_run)
-                }, T[S.outcome] || T.not_run), f.a.createElement("div", {
+                    className: "badge badge-".concat(I[C] || I.not_run)
+                }, T[C] || T.not_run), f.a.createElement("div", {
                     style: {
                         marginTop: 8,
                         fontSize: 12,
                         color: "#666",
                         lineHeight: 1.8
                     }
-                }, "\u6765\u6e90\uff1a", S.source_count || 0, " | \u5237\u65b0\uff1a", S.refreshed_count || 0, " | \u5931\u8d25\uff1a", S.failed_count || 0, f.a.createElement("br", null), "\u4fdd\u7559\uff1a", S.retained_count || 0, " | \u89c4\u5219\uff1a", S.rule_count || 0, " | \u975e\u6cd5\u884c\uff1a", S.invalid_line_count || 0), P.length ? f.a.createElement("div", {
+                }, "\u6765\u6e90\uff1a", S.source_count || 0, " | \u5237\u65b0\uff1a", S.refreshed_count || 0, " | \u5931\u8d25\uff1a", S.failed_count || 0, f.a.createElement("br", null), "\u4fdd\u7559\uff1a", S.retained_count || 0, " | \u89c4\u5219\uff1a", parseInt(R.ip_risk_blacklist_enable) ? S.rule_count || 0 : 0, " | \u975e\u6cd5\u884c\uff1a", S.invalid_line_count || 0), P.length ? f.a.createElement("div", {
                     style: {
                         marginTop: 8,
                         fontSize: 12,
@@ -6006,6 +6012,64 @@
                         fontWeight: "bold"
                     }
                 }, "\u5931\u8d25\u6765\u6e90"), P.map((e,t)=>f.a.createElement("div", {
+                    key: t
+                }, e.source, " (", e.error, ")"))) : null)), f.a.createElement(m, {
+                    title: "\u542f\u7528\u90ae\u4ef6\u9ed1\u540d\u5355",
+                    description: "\u5f00\u542f\u540e\uff0c\u6ce8\u518c\u90ae\u7bb1\u5339\u914d\u9ed1\u540d\u5355\u89c4\u5219\u65f6\u5c06\u89e6\u53d1\u98ce\u63a7\u3002"
+                }, f.a.createElement(l["a"], {
+                    checked: parseInt(R.email_risk_blacklist_enable),
+                    onChange: e=>this.set("risk", "email_risk_blacklist_enable", e ? 1 : 0)
+                })), f.a.createElement(m, {
+                    title: "\u90ae\u4ef6\u9ed1\u540d\u5355\u8ba2\u9605\u5730\u5740",
+                    description: "\u6bcf\u884c\u4e00\u4e2aHTTP(S) URL\u3002"
+                }, f.a.createElement("textarea", {
+                    rows: "6",
+                    type: "text",
+                    className: "form-control",
+                    placeholder: "https://example.com/email-blacklist.txt",
+                    defaultValue: R.email_risk_blacklist_urls,
+                    onChange: e=>this.set("risk", "email_risk_blacklist_urls", e.target.value)
+                })), f.a.createElement("div", {
+                    className: "row",
+                    style: {
+                        padding: "20px",
+                        borderBottom: "1px solid #eee"
+                    }
+                }, f.a.createElement("div", {
+                    className: "col-lg-6"
+                }, f.a.createElement("div", {
+                    style: {
+                        fontWeight: "bold",
+                        marginBottom: 5
+                    }
+                }, "\u90ae\u4ef6\u6700\u65b0\u5237\u65b0\u72b6\u6001"), f.a.createElement("div", {
+                    style: {
+                        fontSize: 12,
+                        color: "#666"
+                    }
+                }, "\u6700\u540e\u8fd0\u884c\uff1a", O.completed_at ? new Date(1e3 * O.completed_at).toLocaleString() : "-")), f.a.createElement("div", {
+                    className: "col-lg-6 text-right"
+                }, f.a.createElement("span", {
+                    className: "badge badge-".concat(I[L] || I.not_run)
+                }, T[L] || T.not_run), f.a.createElement("div", {
+                    style: {
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: "#666",
+                        lineHeight: 1.8
+                    }
+                }, "\u6765\u6e90\uff1a", O.source_count || 0, " | \u5237\u65b0\uff1a", O.refreshed_count || 0, " | \u5931\u8d25\uff1a", O.failed_count || 0, f.a.createElement("br", null), "\u4fdd\u7559\uff1a", O.retained_count || 0, " | \u89c4\u5219\uff1a", parseInt(R.email_risk_blacklist_enable) ? O.rule_count || 0 : 0, " | \u975e\u6cd5\u884c\uff1a", O.invalid_line_count || 0), A.length ? f.a.createElement("div", {
+                    style: {
+                        marginTop: 8,
+                        fontSize: 12,
+                        textAlign: "left",
+                        wordBreak: "break-all"
+                    }
+                }, f.a.createElement("div", {
+                    style: {
+                        fontWeight: "bold"
+                    }
+                }, "\u5931\u8d25\u6765\u6e90"), A.map((e,t)=>f.a.createElement("div", {
                     key: t
                 }, e.source, " (", e.error, ")"))) : null)))), f.a.createElement(s["a"].TabPane, {
                     tab: "\u8ba2\u9605",

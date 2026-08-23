@@ -43,7 +43,14 @@ class CacheKey
         'IP_RISK_BLACKLIST_SOURCE' => 'IP风险黑名单单源快照',
         'IP_RISK_BLACKLIST_SOURCES' => 'IP风险黑名单来源索引',
         'IP_RISK_BLACKLIST_REFRESH_STATUS' => 'IP风险黑名单刷新状态',
-        'IP_RISK_BLACKLIST_REFRESH_LOCK' => 'IP风险黑名单刷新锁'
+        'IP_RISK_BLACKLIST_REFRESH_LOCK' => 'IP风险黑名单刷新锁',
+        'IP_RISK_BLACKLIST_REFRESH_DISABLED' => 'IP风险黑名单刷新关闭标记',
+        'EMAIL_RISK_BLACKLIST_SNAPSHOT' => '邮件风险黑名单快照',
+        'EMAIL_RISK_BLACKLIST_SOURCE' => '邮件风险黑名单单源快照',
+        'EMAIL_RISK_BLACKLIST_SOURCES' => '邮件风险黑名单来源索引',
+        'EMAIL_RISK_BLACKLIST_REFRESH_STATUS' => '邮件风险黑名单刷新状态',
+        'EMAIL_RISK_BLACKLIST_REFRESH_LOCK' => '邮件风险黑名单刷新锁',
+        'EMAIL_RISK_BLACKLIST_REFRESH_DISABLED' => '邮件风险黑名单刷新关闭标记'
     ];
 
     public static function get(string $key, $uniqueValue)

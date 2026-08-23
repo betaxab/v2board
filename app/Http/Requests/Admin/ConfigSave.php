@@ -109,6 +109,13 @@ class ConfigSave extends FormRequest
         'ip_risk_blacklist_enable' => 'in:0,1',
         'ip_risk_blacklist_urls' => ['nullable', 'string', 'max:65535'],
         'ip_risk_exception_rules' => ['nullable', 'string', 'max:65535'],
+        'email_risk_blacklist_enable' => 'in:0,1',
+        'email_risk_blacklist_urls' => [
+            'nullable',
+            'string',
+            'max:65535',
+            'required_if:email_risk_blacklist_enable,1'
+        ],
     ];
 
     /**
@@ -117,7 +124,7 @@ class ConfigSave extends FormRequest
     protected function prepareForValidation(): void
     {
         $normalized = [];
-        foreach (['ip_risk_blacklist_urls', 'ip_risk_exception_rules'] as $field) {
+        foreach (['ip_risk_blacklist_urls', 'ip_risk_exception_rules', 'email_risk_blacklist_urls'] as $field) {
             if ($this->exists($field) && $this->input($field) === null) {
                 $normalized[$field] = '';
             }
@@ -175,6 +182,32 @@ class ConfigSave extends FormRequest
             }
         };
 
+        $rules['email_risk_blacklist_urls'][] = function ($attribute, $value, $fail) {
+            $lines = preg_split('/\r\n|\r|\n/', (string)$value);
+            $hasUrl = false;
+            foreach (is_array($lines) ? $lines : [] as $index => $line) {
+                $url = trim($line);
+                if ($url === '') {
+                    continue;
+                }
+
+                $hasUrl = true;
+                $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+                $host = parse_url($url, PHP_URL_HOST);
+                if (filter_var($url, FILTER_VALIDATE_URL) === false
+                    || !in_array($scheme, ['http', 'https'], true)
+                    || !is_string($host)
+                    || $host === '') {
+                    $fail('邮件黑名单订阅地址第 ' . ($index + 1) . ' 行格式不正确');
+                    return;
+                }
+            }
+
+            if ((int)$this->input('email_risk_blacklist_enable', 0) === 1 && !$hasUrl) {
+                $fail('启用邮件黑名单时必须填写邮件黑名单订阅地址');
+            }
+        };
+
         return $rules;
     }
 
@@ -191,6 +224,7 @@ class ConfigSave extends FormRequest
             'logo.url' => 'LOGO URL格式不正确，必须携带https(s)://',
             'secure_path.min' => '后台路径长度最小为8位',
             'secure_path.regex' => '后台路径只能为字母或数字',
+            'email_risk_blacklist_urls.required_if' => '启用邮件黑名单时必须填写邮件黑名单订阅地址',
         ];
     }
 }

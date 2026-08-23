@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
+use App\Services\EmailRiskRefreshService;
 use App\Services\IpRiskRefreshService;
 use App\Services\TelegramService;
 use App\Utils\Dict;
@@ -16,13 +17,17 @@ use Illuminate\Support\Facades\Cache;
 class ConfigController extends Controller
 {
     private $ipRiskRefreshService;
+    private $emailRiskRefreshService;
 
     /**
-     * 注入 IP 风险黑名单刷新服务。
+     * 注入相互独立的 IP 和邮件风险刷新服务。
      */
-    public function __construct(?IpRiskRefreshService $ipRiskRefreshService = null)
-    {
+    public function __construct(
+        ?IpRiskRefreshService $ipRiskRefreshService = null,
+        ?EmailRiskRefreshService $emailRiskRefreshService = null
+    ) {
         $this->ipRiskRefreshService = $ipRiskRefreshService ?: new IpRiskRefreshService();
+        $this->emailRiskRefreshService = $emailRiskRefreshService ?: new EmailRiskRefreshService();
     }
 
     public function getEmailTemplate()
@@ -187,7 +192,10 @@ class ConfigController extends Controller
                 'ip_risk_blacklist_enable' => (int)config('v2board.ip_risk_blacklist_enable', 0),
                 'ip_risk_blacklist_urls' => (string)config('v2board.ip_risk_blacklist_urls', ''),
                 'ip_risk_exception_rules' => (string)config('v2board.ip_risk_exception_rules', ''),
-                'ip_risk_refresh_status' => $this->ipRiskRefreshService->getLatestStatus()
+                'ip_risk_refresh_status' => $this->ipRiskRefreshService->getLatestStatus(),
+                'email_risk_blacklist_enable' => (int)config('v2board.email_risk_blacklist_enable', 0),
+                'email_risk_blacklist_urls' => (string)config('v2board.email_risk_blacklist_urls', ''),
+                'email_risk_refresh_status' => $this->emailRiskRefreshService->getLatestStatus()
             ]
         ];
         if ($key && isset($data[$key])) {
@@ -207,7 +215,14 @@ class ConfigController extends Controller
     {
         $data = $request->validated();
         $config = config('v2board');
-        $oldUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
+        $oldIpEnabled = (bool)($config['ip_risk_blacklist_enable'] ?? false);
+        $oldIpUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
+        $oldEmailEnabled = (bool)($config['email_risk_blacklist_enable'] ?? false);
+        $oldEmailUrlValue = (string)($config['email_risk_blacklist_urls'] ?? '');
+        $ipRiskTouched = array_key_exists('ip_risk_blacklist_enable', $data)
+            || array_key_exists('ip_risk_blacklist_urls', $data);
+        $emailRiskTouched = array_key_exists('email_risk_blacklist_enable', $data)
+            || array_key_exists('email_risk_blacklist_urls', $data);
         foreach (ConfigSave::RULES as $k => $v) {
             if (!in_array($k, array_keys(ConfigSave::RULES))) {
                 unset($config[$k]);
@@ -217,9 +232,20 @@ class ConfigController extends Controller
                 $config[$k] = $data[$k];
             }
         }
-        $newUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
-        $shouldRefresh = array_key_exists('ip_risk_blacklist_urls', $data)
-            && $this->ipRiskRefreshService->hasSubscriptionUrlChanges($oldUrlValue, $newUrlValue);
+        $newIpEnabled = (bool)($config['ip_risk_blacklist_enable'] ?? false);
+        $newIpUrlValue = (string)($config['ip_risk_blacklist_urls'] ?? '');
+        $newEmailEnabled = (bool)($config['email_risk_blacklist_enable'] ?? false);
+        $newEmailUrlValue = (string)($config['email_risk_blacklist_urls'] ?? '');
+        $ipUrlsChanged = $this->ipRiskRefreshService
+            ->hasSubscriptionUrlChanges($oldIpUrlValue, $newIpUrlValue);
+        $emailUrlsChanged = $this->emailRiskRefreshService
+            ->hasSubscriptionUrlChanges($oldEmailUrlValue, $newEmailUrlValue);
+        $shouldDisableIp = $ipRiskTouched && !$newIpEnabled;
+        $shouldRefreshIp = $ipRiskTouched && $newIpEnabled && (!$oldIpEnabled || $ipUrlsChanged);
+        $shouldDisableEmail = $emailRiskTouched && !$newEmailEnabled;
+        $shouldRefreshEmail = $emailRiskTouched
+            && $newEmailEnabled
+            && (!$oldEmailEnabled || $emailUrlsChanged);
         $data = var_export($config, 1);
         if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
             abort(500, '修改失败');
@@ -231,12 +257,45 @@ class ConfigController extends Controller
         }
         Artisan::call('config:cache');
         $refreshStatus = null;
-        if ($shouldRefresh) {
+        if ($shouldDisableIp) {
             try {
-                $refreshStatus = $this->ipRiskRefreshService
-                    ->refresh((string)$config['ip_risk_blacklist_urls']);
+                $this->ipRiskRefreshService->disableAndClearSnapshots();
             } catch (\Throwable $exception) {
-                $refreshStatus = $this->ipRiskRefreshService->recordUnexpectedFailure($newUrlValue);
+                // 配置已持久化，清理失败不得回滚保存或阻止邮件域处理。
+            }
+        } elseif ($shouldRefreshIp) {
+            try {
+                $refreshStatus = !$oldIpEnabled
+                    ? $this->ipRiskRefreshService->refreshAfterEnable($newIpUrlValue)
+                    : $this->ipRiskRefreshService->refresh($newIpUrlValue);
+            } catch (\Throwable $exception) {
+                try {
+                    $refreshStatus = $this->ipRiskRefreshService
+                        ->recordUnexpectedFailure($newIpUrlValue);
+                } catch (\Throwable $statusException) {
+                    $refreshStatus = $this->ipRiskRefreshService->getLatestStatus();
+                }
+            }
+        }
+        $emailRefreshStatus = null;
+        if ($shouldDisableEmail) {
+            try {
+                $this->emailRiskRefreshService->disableAndClearSnapshots();
+            } catch (\Throwable $exception) {
+                // 配置已持久化，清理失败不得回滚保存或阻止 IP 域结果。
+            }
+        } elseif ($shouldRefreshEmail) {
+            try {
+                $emailRefreshStatus = !$oldEmailEnabled
+                    ? $this->emailRiskRefreshService->refreshAfterEnable($newEmailUrlValue)
+                    : $this->emailRiskRefreshService->refresh($newEmailUrlValue);
+            } catch (\Throwable $exception) {
+                try {
+                    $emailRefreshStatus = $this->emailRiskRefreshService
+                        ->recordUnexpectedFailure($newEmailUrlValue);
+                } catch (\Throwable $statusException) {
+                    $emailRefreshStatus = $this->emailRiskRefreshService->getLatestStatus();
+                }
             }
         }
         if(Cache::has('WEBMANPID')) {
@@ -248,6 +307,9 @@ class ConfigController extends Controller
             if ($refreshStatus !== null) {
                 $response['refresh_status'] = $refreshStatus;
             }
+            if ($emailRefreshStatus !== null) {
+                $response['email_refresh_status'] = $emailRefreshStatus;
+            }
             return response($response);
         }
         $response = [
@@ -255,6 +317,9 @@ class ConfigController extends Controller
         ];
         if ($refreshStatus !== null) {
             $response['refresh_status'] = $refreshStatus;
+        }
+        if ($emailRefreshStatus !== null) {
+            $response['email_refresh_status'] = $emailRefreshStatus;
         }
         return response($response);
     }
