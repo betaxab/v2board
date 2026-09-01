@@ -122,7 +122,8 @@ class OrderController extends Controller
 
         // Restricting the types of users who can purchase
         $userType = $userService->getUserType($user);
-        if (!PlanService::isUserTypeAllowed($plan, $userType)) {
+        $isCurrentPlan = $user->plan_id !== null && (int)$user->plan_id === (int)$plan->id;
+        if (!$isCurrentPlan && !PlanService::isUserTypeAllowed($plan, $userType)) {
             abort(500, __('This subscription is not available for your account'));
         }
 

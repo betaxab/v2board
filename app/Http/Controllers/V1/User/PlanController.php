@@ -24,7 +24,8 @@ class PlanController extends Controller
             if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
                 abort(500, __('Subscription plan does not exist'));
             }
-            if ($plan->hide_on_mismatch && !PlanService::isUserTypeAllowed($plan, $userType)) {
+            $isCurrentPlan = $user->plan_id !== null && (int)$user->plan_id === (int)$plan->id;
+            if ($plan->hide_on_mismatch && !$isCurrentPlan && !PlanService::isUserTypeAllowed($plan, $userType)) {
                 abort(500, __('Subscription plan does not exist'));
             }
             return response([
