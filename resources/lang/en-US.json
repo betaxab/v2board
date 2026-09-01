@@ -97,5 +97,6 @@
     "Current product is sold out": "Current product is sold out",
     "There are too many password errors, please try again after :minute minutes.": "There are too many password errors, please try again after :minute minutes.",
     "This subscription is not available for your account": "This subscription is not available for your account",
+    "You do not have enough time to renew your subscription": "You do not have enough time to renew your subscription",
     "Reset failed, Please try again later": "Reset failed, Please try again later"
 }
