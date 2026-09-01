@@ -128,6 +128,14 @@ class V2nodeController extends Controller
         } else {
             if ((int)$params['tls'] === 0) {
                 $params['tls_settings'] = null;
+            } elseif (isset($params['tls_settings']) && is_array($params['tls_settings'])) {
+                unset(
+                    $params['tls_settings']['plugin'],
+                    $params['tls_settings']['shadow_tls'],
+                    $params['tls_settings']['shadow_tls_version'],
+                    $params['tls_settings']['shadow_tls_password'],
+                    $params['tls_settings']['wildcard_sni']
+                );
             }
         }
         if (isset($params['tls']) && !empty($params['tls_settings']['cert_mode']) && $params['tls_settings']['cert_mode'] === 'remote') {
