@@ -18927,7 +18927,7 @@
                     id: "\u4ea7\u54c1\u540d\u79f0"
                 }), "\uff1a"), f.a.createElement("span", null, t.plan.name)), f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u7c7b\u578b/\u5468\u671f"
-                }), "\uff1a"), f.a.createElement("span", null, h["a"].periodText[t.period] && h["a"].periodText[t.period]())), f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
+                }), "\uff1a"), f.a.createElement("span", null, h["a"].getOrderPeriodText(t))), f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u4ea7\u54c1\u6d41\u91cf"
                 }), "\uff1a"), f.a.createElement("span", null, t.plan.transfer_enable, " GB")))))), f.a.createElement("div", {
                     className: "block block-rounded"
@@ -19079,9 +19079,9 @@
                     }
                 }, f.a.createElement("div", {
                     className: "col-8"
-                }, t.plan.name, " x ", h["a"].periodText[t.period] && h["a"].periodText[t.period]()), f.a.createElement("div", {
+                }, t.plan.name, " x ", h["a"].getOrderPeriodText(t)), f.a.createElement("div", {
                     className: "col-4 text-right"
-                }, g.currency_symbol, (t.plan[t.period] / 100).toFixed(2))), t.discount_amount ? f.a.createElement("div", null, f.a.createElement("div", {
+                }, g.currency_symbol, (([5, 6].includes(Number(t.type)) ? 0 : t.plan[t.period]) / 100).toFixed(2))), t.discount_amount ? f.a.createElement("div", null, f.a.createElement("div", {
                     className: "pt-3",
                     style: {
                         color: "#646669"
@@ -52752,6 +52752,18 @@
                     id: "\u6d41\u91cf\u91cd\u7f6e\u5305"
                 })
             },
+            orderTypeText: {
+                5: ()=>Object(r["formatMessage"])({
+                    id: "\u81ea\u52a8\u6d41\u91cf\u91cd\u7f6e"
+                }),
+                6: ()=>Object(r["formatMessage"])({
+                    id: "\u63d0\u524d\u5f00\u542f\u6d41\u91cf\u5468\u671f"
+                })
+            },
+            getOrderPeriodText(e) {
+                var t = this.orderTypeText[e.type] || this.periodText[e.period];
+                return t && t()
+            },
             tutorialCategoryText: {
                 1: "Windows",
                 2: "macOS",
@@ -59661,7 +59673,7 @@
                     key: "period",
                     align: "center",
                     render: (e,t)=>{
-                        return b.a.createElement(M["a"], null, W["a"].periodText[t.period] && W["a"].periodText[t.period]())
+                        return b.a.createElement(M["a"], null, W["a"].getOrderPeriodText(t))
                     }
                 }, {
                     title: Object(B["formatMessage"])({

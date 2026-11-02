@@ -6,10 +6,15 @@ use App\Jobs\OrderHandleJob;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Utils\Helper;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
 {
+    const TYPE_AUTO_RESET = 5;
+    const TYPE_NEW_PERIOD = 6;
+    const TRAFFIC_RECORD_TYPES = [self::TYPE_AUTO_RESET, self::TYPE_NEW_PERIOD];
+
     CONST STR_TO_TIME = [
         'month_price' => 1,
         'quarter_price' => 3,
@@ -26,9 +31,32 @@ class OrderService
         $this->order = $order;
     }
 
+    // Call within the transaction that changes the user's traffic/cycle.
+    public static function recordTrafficReset(User $user, int $type): Order
+    {
+        if (!in_array($type, self::TRAFFIC_RECORD_TYPES, true)) {
+            throw new \InvalidArgumentException('Invalid traffic reset order type');
+        }
+        $order = new Order();
+        $order->user_id = $user->id;
+        $order->plan_id = $user->plan_id;
+        $order->type = $type;
+        // Keep reset records out of subscription duration and surplus calculations.
+        $order->period = 'reset_price';
+        $order->trade_no = Helper::generateOrderNo();
+        $order->total_amount = 0;
+        $order->status = 3;
+        $order->commission_status = 3;
+        if (!$order->save()) {
+            throw new \RuntimeException('Failed to save traffic reset order');
+        }
+        return $order;
+    }
+
     public function open()
     {
         $order = $this->order;
+        if (in_array((int)$order->type, self::TRAFFIC_RECORD_TYPES, true)) return;
         $this->user = User::find($order->user_id);
         if ($order->type == 9) {
             DB::beginTransaction();
@@ -165,6 +193,7 @@ class OrderService
     private function haveValidOrder(User $user)
     {
         return Order::where('user_id', $user->id)
+            ->whereNotIn('type', self::TRAFFIC_RECORD_TYPES)
             ->whereNotIn('status', [0, 2])
             ->first();
     }

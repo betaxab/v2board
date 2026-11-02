@@ -95882,7 +95882,7 @@
                     span: 6
                 }, "\u8ba2\u5355\u5468\u671f"), g.a.createElement(S["a"], {
                     span: 18
-                }, y["a"].periodText[this.state.order.period])), g.a.createElement(E["a"], {
+                }, ({5: "\u81ea\u52a8\u6d41\u91cf\u91cd\u7f6e", 6: "\u63d0\u524d\u5f00\u542f\u6d41\u91cf\u5468\u671f"}[this.state.order.type] || y["a"].periodText[this.state.order.period]))), g.a.createElement(E["a"], {
                     gutter: [16, 16],
                     style: n
                 }, g.a.createElement(S["a"], {
@@ -96070,6 +96070,8 @@
                             2: "\u7eed\u8d39",
                             3: "\u53d8\u66f4",
                             4: "\u6d41\u91cf\u5305",
+                            5: "\u81ea\u52a8\u6d41\u91cf\u91cd\u7f6e",
+                            6: "\u63d0\u524d\u5f00\u542f\u6d41\u91cf\u5468\u671f",
                             9: "\u5145\u503c"
                         };
                         return t[e]
@@ -96084,7 +96086,7 @@
                     key: "period",
                     align: "center",
                     render: (e,t)=>{
-                        return g.a.createElement(p["a"], null, y["a"].periodText[t.period])
+                        return g.a.createElement(p["a"], null, ({5: "\u81ea\u52a8\u6d41\u91cf\u91cd\u7f6e", 6: "\u63d0\u524d\u5f00\u542f\u6d41\u91cf\u5468\u671f"}[t.type] || y["a"].periodText[t.period]))
                     }
                 }, {
                     title: "\u652f\u4ed8\u91d1\u989d",

@@ -9,6 +9,7 @@ use App\Jobs\SendTelegramJob;
 use App\Models\User;
 use App\Models\Plan;
 use App\Models\Order;
+use App\Services\OrderService;
 use App\Services\TelegramService;
 use App\Services\TicketService;
 use App\Models\Ticket;
@@ -65,8 +66,9 @@ class TicketController extends Controller
                     // 完全开放，不禁止任何工单
                     break;
                 case 1:
-                    // 仅限有付费订单用户
+                    // 仅限有已完成或已折抵订单的用户，排除自动流量重置和提前开启流量周期记录
                     $hasOrder = Order::where('user_id', $request->user['id'])
+                        ->whereNotIn('type', OrderService::TRAFFIC_RECORD_TYPES)
                         ->whereIn('status', [3, 4])
                         ->exists();
 

@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Plan;
+use App\Models\Order;
+use App\Services\OrderService;
 use Illuminate\Console\Command;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -75,9 +77,11 @@ class ResetTraffic extends Command
                         // year first day
                         case 3:
                             $this->resetByYearFirstDay($builder);
+                            break;
                         // year expire day
                         case 4:
                             $this->resetByExpireYear($builder);
+                            break;
                     }
                     break;
                 }
@@ -119,35 +123,20 @@ class ResetTraffic extends Command
                 array_push($users, $item->id);
             }
         }
-        $this->retryTransaction(function () use ($users) {
-            User::whereIn('id', $users)->update([
-                'u' => 0,
-                'd' => 0
-            ]);
-        });
+        $this->resetUsers((clone $builder)->whereIn('id', $users));
     }
 
     private function resetByYearFirstDay($builder): void
     {
         if ((string)date('md') === '0101') {
-            $this->retryTransaction(function () use ($builder) {
-                $builder->update([
-                    'u' => 0,
-                    'd' => 0
-                ]);
-            });
+            $this->resetUsers($builder);
         }
     }
 
     private function resetByMonthFirstDay($builder): void
     {
         if ((string)date('d') === '01') {
-            $this->retryTransaction(function () use ($builder) {
-                $builder->update([
-                    'u' => 0,
-                    'd' => 0
-                ]);
-            });
+            $this->resetUsers($builder);
         }
     }
 
@@ -166,11 +155,32 @@ class ResetTraffic extends Command
             }
 
         }
-        $this->retryTransaction(function () use ($users) {
-            User::whereIn('id', $users)->update([
-                'u' => 0,
-                'd' => 0
-            ]);
+        $this->resetUsers((clone $builder)->whereIn('id', $users));
+    }
+
+    private function resetUsers($builder): void
+    {
+        $dayStart = strtotime('today');
+        $dayEnd = strtotime('tomorrow', $dayStart);
+        $builder->chunkById(500, function ($users) use ($builder, $dayStart, $dayEnd) {
+            foreach ($users as $candidate) {
+                $this->retryTransaction(function () use ($builder, $candidate, $dayStart, $dayEnd) {
+                    $user = (clone $builder)->where('id', $candidate->id)->lockForUpdate()->first();
+                    if (!$user) return;
+                    // The user row lock serializes concurrent runs and early-cycle requests.
+                    if (Order::where('user_id', $user->id)
+                        ->where('type', OrderService::TYPE_AUTO_RESET)
+                        ->where('created_at', '>=', $dayStart)
+                        ->where('created_at', '<', $dayEnd)
+                        ->exists()) return;
+                    $user->u = 0;
+                    $user->d = 0;
+                    if (!$user->save()) {
+                        throw new \RuntimeException('Failed to reset traffic');
+                    }
+                    OrderService::recordTrafficReset($user, OrderService::TYPE_AUTO_RESET);
+                });
+            }
         });
     }
 

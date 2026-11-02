@@ -94,7 +94,7 @@ class UserController extends Controller
         }
         DB::beginTransaction();
         try {
-            $user = User::find($request->user['id']);
+            $user = User::where('id', $request->user['id'])->lockForUpdate()->first();
             if (!$user) {
                 abort(500, __('The user does not exist'));
             }
@@ -144,6 +144,7 @@ class UserController extends Controller
                 abort(500, __('You do not have enough time to renew your subscription'));
             }
 
+            OrderService::recordTrafficReset($user, OrderService::TYPE_NEW_PERIOD);
             DB::commit();
             return response([
                 'data' => true
