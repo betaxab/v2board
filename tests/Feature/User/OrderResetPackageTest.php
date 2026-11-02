@@ -155,7 +155,7 @@ class OrderResetPackageTest extends TestCase
         $plan->update(['reset_traffic_method' => 1]);
         $user = $this->createNewUserWithPlan($plan);
         $expiresAt = time() + 100 * 86400;
-        $user->update(['expired_at' => $expiresAt, 'u' => 40, 'd' => 60]);
+        $user->update(['expired_at' => $expiresAt, 'u' => 40, 'd' => 50]);
 
         $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
             ->assertOk()->assertJsonPath('data', true);
@@ -177,11 +177,11 @@ class OrderResetPackageTest extends TestCase
         $plan = $this->createOldUserPlan();
         $plan->update(['reset_traffic_method' => 1]);
         $user = $this->createNewUserWithPlan($plan);
-        $user->update(['expired_at' => time() + 100 * 86400]);
+        $user->update(['expired_at' => time() + 100 * 86400, 'u' => 40, 'd' => 49]);
         $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
             ->assertStatus(500);
         $this->assertSame(0, Order::count());
-        $this->assertSame(1, (int)$user->fresh()->u);
+        $this->assertSame(40, (int)$user->fresh()->u);
     }
 
     public function testEarlyCycleRollsBackWhenOrderCannotBeSaved(): void
