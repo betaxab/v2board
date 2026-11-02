@@ -6,6 +6,8 @@ use App\Http\Middleware\User as UserMiddleware;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -121,6 +123,156 @@ class OrderResetPackageTest extends TestCase
         $this->assertSame(0, Order::count());
     }
 
+    public function testAutomaticResetCreatesOneCompletedFreeOrderAndDoesNotRepeat(): void
+    {
+        $plan = $this->createOldUserPlan();
+        $plan->update(['reset_traffic_method' => 4]);
+        $user = $this->createNewUserWithPlan($plan);
+        $expiresAt = strtotime('+2 years');
+        $user->update(['expired_at' => $expiresAt, 'u' => 40, 'd' => 60]);
+        Redis::shouldReceive('setex')->twice()->andReturn(true);
+        Redis::shouldReceive('del')->twice()->andReturn(1);
+
+        $this->artisan('reset:traffic')->assertExitCode(0);
+        $order = Order::firstOrFail();
+        $this->assertSame(OrderService::TYPE_AUTO_RESET, (int)$order->type);
+        $this->assertTrafficRecord($order, $user);
+        $this->assertSame(0, (int)$user->fresh()->u);
+        $this->assertSame(0, (int)$user->fresh()->d);
+        $this->assertSame($expiresAt, (int)$user->fresh()->expired_at);
+
+        $user->update(['u' => 10, 'd' => 20]);
+        $this->artisan('reset:traffic')->assertExitCode(0);
+        $this->assertSame(1, Order::count());
+        $this->assertSame(10, (int)$user->fresh()->u);
+        $this->assertSame(20, (int)$user->fresh()->d);
+    }
+
+    public function testEarlyCycleCreatesCompletedFreeOrderOnlyOnce(): void
+    {
+        config(['v2board.allow_new_period' => 1]);
+        $plan = $this->createOldUserPlan();
+        $plan->update(['reset_traffic_method' => 1]);
+        $user = $this->createNewUserWithPlan($plan);
+        $expiresAt = time() + 100 * 86400;
+        $user->update(['expired_at' => $expiresAt, 'u' => 40, 'd' => 60]);
+
+        $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
+            ->assertOk()->assertJsonPath('data', true);
+        $order = Order::firstOrFail();
+        $this->assertSame(OrderService::TYPE_NEW_PERIOD, (int)$order->type);
+        $this->assertTrafficRecord($order, $user);
+        $this->assertSame(0, (int)$user->fresh()->u);
+        $this->assertSame(0, (int)$user->fresh()->d);
+        $this->assertLessThan($expiresAt, (int)$user->fresh()->expired_at);
+
+        $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
+            ->assertStatus(500);
+        $this->assertSame(1, Order::count());
+    }
+
+    public function testRejectedEarlyCycleDoesNotCreateOrder(): void
+    {
+        config(['v2board.allow_new_period' => 1]);
+        $plan = $this->createOldUserPlan();
+        $plan->update(['reset_traffic_method' => 1]);
+        $user = $this->createNewUserWithPlan($plan);
+        $user->update(['expired_at' => time() + 100 * 86400]);
+        $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
+            ->assertStatus(500);
+        $this->assertSame(0, Order::count());
+        $this->assertSame(1, (int)$user->fresh()->u);
+    }
+
+    public function testEarlyCycleRollsBackWhenOrderCannotBeSaved(): void
+    {
+        config(['v2board.allow_new_period' => 1]);
+        $plan = $this->createOldUserPlan();
+        $plan->update(['reset_traffic_method' => 1]);
+        $user = $this->createNewUserWithPlan($plan);
+        $expiresAt = time() + 100 * 86400;
+        $user->update(['expired_at' => $expiresAt, 'u' => 40, 'd' => 60]);
+        Order::creating(function () { return false; });
+        try {
+            $this->postJson('/api/v1/user/newPeriod', ['user' => ['id' => $user->id]])
+                ->assertStatus(500);
+        } finally {
+            Order::flushEventListeners();
+        }
+        $this->assertSame(0, Order::count());
+        $this->assertSame($expiresAt, (int)$user->fresh()->expired_at);
+        $this->assertSame(40, (int)$user->fresh()->u);
+        $this->assertSame(60, (int)$user->fresh()->d);
+    }
+
+    public function testResetRecordsDoNotCountAsFirstPurchaseOrReopenTraffic(): void
+    {
+        $plan = $this->createOldUserPlan();
+        $user = $this->createNewUserWithPlan($plan);
+        foreach (OrderService::TRAFFIC_RECORD_TYPES as $type) {
+            $order = DB::transaction(function () use ($user, $type) {
+                return OrderService::recordTrafficReset($user, $type);
+            });
+            $service = new OrderService($order);
+            $hasOrder = new \ReflectionMethod(OrderService::class, 'haveValidOrder');
+            $hasOrder->setAccessible(true);
+            $this->assertNull($hasOrder->invoke($service, $user));
+            $service->open();
+            $this->assertSame(1, (int)$user->fresh()->u);
+            $this->assertSame(1, (int)$user->fresh()->d);
+        }
+    }
+
+    public function testAutomaticResetSkipsExpiredAndNonResetUsers(): void
+    {
+        $plan = $this->createOldUserPlan();
+        $plan->update(['reset_traffic_method' => 2]);
+        $user = $this->createNewUserWithPlan($plan);
+        Redis::shouldReceive('setex')->twice()->andReturn(true);
+        Redis::shouldReceive('del')->twice()->andReturn(1);
+        $this->artisan('reset:traffic')->assertExitCode(0);
+        $this->assertSame(0, Order::count());
+        $plan->update(['reset_traffic_method' => 4]);
+        $user->update(['expired_at' => time() - 1]);
+        $this->artisan('reset:traffic')->assertExitCode(0);
+        $this->assertSame(0, Order::count());
+        $this->assertSame(1, (int)$user->fresh()->u);
+    }
+
+    public function testAutomaticResetRollsBackWhenOrderCannotBeSaved(): void
+    {
+        config(['v2board.telegram_bot_enable' => 0]);
+        $plan = $this->createOldUserPlan();
+        $user = $this->createNewUserWithPlan($plan);
+        $command = new \App\Console\Commands\ResetTraffic();
+        $reset = new \ReflectionMethod($command, 'resetUsers');
+        $reset->setAccessible(true);
+        Order::creating(function () { return false; });
+        try {
+            $reset->invoke($command, User::where('id', $user->id));
+            $this->fail('Expected the reset to fail when its order cannot be saved');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(500, $e->getStatusCode());
+        } finally {
+            Order::flushEventListeners();
+        }
+        $this->assertSame(0, Order::count());
+        $this->assertSame(1, (int)$user->fresh()->u);
+        $this->assertSame(1, (int)$user->fresh()->d);
+    }
+
+    private function assertTrafficRecord(Order $order, User $user): void
+    {
+        $this->assertSame((int)$user->id, (int)$order->user_id);
+        $this->assertSame((int)$user->plan_id, (int)$order->plan_id);
+        $this->assertSame('reset_price', $order->period);
+        $this->assertSame(0, (int)$order->total_amount);
+        $this->assertSame(3, (int)$order->status);
+        $this->assertSame(3, (int)$order->commission_status);
+        $this->assertNull($order->paid_at);
+        $this->assertNotEmpty($order->trade_no);
+    }
+
     private function createOldUserPlan(): Plan
     {
         return Plan::create([
@@ -166,6 +318,7 @@ class OrderResetPackageTest extends TestCase
             $table->string('name');
             $table->boolean('show')->default(false);
             $table->boolean('renew')->default(true);
+            $table->integer('reset_traffic_method')->nullable();
             $table->unsignedInteger('month_price')->nullable();
             $table->unsignedInteger('reset_price')->nullable();
             $table->unsignedInteger('capacity_limit')->nullable();
@@ -208,6 +361,7 @@ class OrderResetPackageTest extends TestCase
             $table->string('trade_no')->unique();
             $table->integer('total_amount');
             $table->integer('status')->default(0);
+            $table->integer('commission_status')->default(0);
             $table->unsignedBigInteger('created_at');
             $table->unsignedBigInteger('updated_at');
         });
