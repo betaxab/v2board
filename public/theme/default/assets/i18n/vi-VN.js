@@ -250,6 +250,7 @@ window.settings.i18n['vi-VN'] = {
   'Telegram 讨论组': 'Nhóm Telegram',
   '立即加入': 'Vào ngay',
   '该订阅无法续费，仅允许新用户购买': 'Đăng ký này không thể gia hạn, chỉ người dùng mới được phép mua',
+  'time_difference{time_diff}_seconds': 'Cảnh báo: Đồng hồ của bạn nhanh/chậm hơn giờ mạng {time_diff} giây. Bạn sẽ không thể kết nối với máy chủ của chúng tôi. Vui lòng đồng bộ đồng hồ với giờ mạng chuẩn ngay lập tức.',
   '重置当月流量': 'Đặt lại dung lượng tháng hiện tại',
   '流量明细仅保留近月数据以供查询。': 'Chi tiết dung lượng chỉ lưu dữ liệu của những tháng gần đây để truy vấn.',
   '扣费倍率': 'Tỷ lệ khấu trừ',

@@ -249,6 +249,7 @@ window.settings.i18n['en-US'] = {
   '于 {date} 到期，距离到期还有 {day} 天。': 'Will expire on {date}, {day} days before expiration, ',
   'Telegram 讨论组': 'Telegram Discussion Group',
   '立即加入': 'Join Now',
+  'time_difference{time_diff}_seconds': 'Warning: Your local clock is {time_diff} seconds ahead of/behind network time. You will be unable to connect to our servers. Please synchronize your local clock with standard network time immediately.',
   '该订阅无法续费，仅允许新用户购买': 'This subscription cannot be renewed and is only available to new users.',
   '重置当月流量': 'Reset current month usage',
   '流量明细仅保留近月数据以供查询。': 'Only keep the most recent month\'s usage for checking the transfer data details.',

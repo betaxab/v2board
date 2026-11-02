@@ -17730,7 +17730,8 @@
         t["default"] = {
             name: "comm",
             state: {
-                config: {}
+                config: {},
+                clockSample: null
             },
             reducers: {
                 setState(e, t) {
@@ -17741,16 +17742,18 @@
             effects: {
                 config(e, t) {
                     return a().mark(function e() {
-                        var n, r;
+                        var n, r, o, s;
                         return a().wrap(function(e) {
                             while (1)
                                 switch (e.prev = e.next) {
                                 case 0:
                                     return n = t.put,
+                                    o = performance.now(),
                                     e.next = 3,
                                     Object(i["a"])("/user/comm/config");
                                 case 3:
                                     if (r = e.sent,
+                                    s = performance.now(),
                                     200 === r.code) {
                                         e.next = 6;
                                         break
@@ -17761,7 +17764,11 @@
                                     n({
                                         type: "setState",
                                         payload: {
-                                            config: r.data
+                                            config: r.data,
+                                            clockSample: Number.isFinite(r.data.timestamp) && r.data.timestamp > 0 ? {
+                                                timestamp: r.data.timestamp + (s - o) / 2,
+                                                receivedAt: s
+                                            } : null
                                         }
                                     });
                                 case 8:
@@ -30813,7 +30820,8 @@
           , y = n("/MKj")
           , g = n("/Ira")
           , b = n("Y2fQ")
-          , w = n("v32e");
+          , w = n("v32e")
+          , C = n("tI4l");
         class x extends l.a.Component {
             constructor(e) {
                 super(e),
@@ -30847,7 +30855,23 @@
                 }),
                 this.props.dispatch({
                     type: "comm/config"
-                })
+                }),
+                this.clockTimer = setInterval(()=>this.forceUpdate(), 10000)
+            }
+            componentWillUnmount() {
+                clearInterval(this.clockTimer)
+            }
+            renderClockWarning() {
+                var e = C["a"].getClockSkew(this.props.comm.clockSample);
+                if (e === null || Math.abs(e) < 60000) return null;
+                return l.a.createElement("div", {
+                    className: "alert alert-warning",
+                    role: "alert"
+                }, Object(b["formatMessage"])({
+                    id: "time_difference{time_diff}_seconds"
+                }, {
+                    time_diff: (Math.abs(e) / 1000).toFixed(3)
+                }))
             }
             modalVisible(e) {
                 this.setState({
@@ -30987,7 +31011,7 @@
                     id: "main-container"
                 }, l.a.createElement("div", {
                     className: "content content-full"
-                }, x.map(e=>e), m.length > 0 && l.a.createElement("div", {
+                }, this.renderClockWarning(), x.map(e=>e), m.length > 0 && l.a.createElement("div", {
                     className: "row mb-3 mb-md-0"
                 }, l.a.createElement("div", {
                     className: "col-12 mb-sm-4"
@@ -52751,6 +52775,11 @@
                 reset_price: ()=>Object(r["formatMessage"])({
                     id: "\u6d41\u91cf\u91cd\u7f6e\u5305"
                 })
+            },
+            getClockSkew(e) {
+                if (!e || !Number.isFinite(e.timestamp) || e.timestamp <= 0 || !Number.isFinite(e.receivedAt)) return null;
+                var t = Date.now() - (e.timestamp + performance.now() - e.receivedAt);
+                return Number.isFinite(t) ? t : null
             },
             orderTypeText: {
                 5: ()=>Object(r["formatMessage"])({
