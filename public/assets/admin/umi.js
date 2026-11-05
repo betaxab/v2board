@@ -71345,6 +71345,7 @@
                         title: "\u6743\u9650\u7ec4",
                         condition: ["="],
                         type: "select",
+                        multiple: !0,
                         options: M.map(e=>({
                             key: e.name,
                             value: e.id
@@ -71387,6 +71388,7 @@
                         title: "\u9a8c\u8bc1\u72b6\u6001",
                         condition: ["="],
                         type: "select",
+                        multiple: !0,
                         options: [{
                             key: "\u7070\u8272 (Grey)",
                             value: 0
@@ -78550,7 +78552,8 @@
             onChange(e, t, n, r) {
                 var i = this.state.filter;
                 i[n][e] = t,
-                "key" === e && (i[n]["condition"] = this.props.keys[r].condition[0]),
+                "key" === e && (i[n]["condition"] = this.props.keys[r].condition[0],
+                i[n]["value"] = this.props.keys[r].multiple ? [] : ""),
                 this.setState({
                     filter: i
                 }),
@@ -78561,7 +78564,7 @@
             onOk() {
                 var e = !0;
                 this.state.filter.forEach(t=>{
-                    "" === t.value && (u["a"].error({
+                    ("" === t.value || Array.isArray(t.value) && !t.value.length) && (u["a"].error({
                         message: "\u8fc7\u6ee4\u5668",
                         description: "\u6b32\u68c0\u7d22\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a",
                         duration: 1.5
@@ -78648,7 +78651,8 @@
                     )))), m.a.createElement("div", {
                         className: "form-group"
                     }, m.a.createElement("label", null, "\u6b32\u68c0\u7d22\u5185\u5bb9"), m.a.createElement("div", null, "select" === n.type && m.a.createElement(s["a"], {
-                        defaultValue: this.state.filter[t].value || void 0,
+                        mode: n.multiple ? "multiple" : void 0,
+                        value: n.multiple ? (Array.isArray(e.value) ? e.value : e.value === "" || e.value == null ? [] : [e.value]) : e.value === "" ? void 0 : e.value,
                         style: {
                             width: "100%"
                         },

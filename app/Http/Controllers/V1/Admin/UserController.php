@@ -38,6 +38,24 @@ class UserController extends Controller
         $filters = $request->input('filter');
         if ($filters) {
             foreach ($filters as $k => $filter) {
+                if (is_array($filter['value'])) {
+                    if (!in_array($filter['key'], ['verification_status', 'group_id'], true)
+                        || !in_array($filter['condition'], ['=', '!='], true)) {
+                        abort(422, '过滤条件参数有误');
+                    }
+                    validator(['values' => $filter['value']], [
+                        'values' => 'required|array',
+                        'values.*' => $filter['key'] === 'verification_status'
+                            ? 'required|integer|in:0,1,2,3,4'
+                            : 'required|integer|min:1',
+                    ])->validate();
+                    if ($filter['condition'] === '!=') {
+                        $builder->whereNotIn($filter['key'], $filter['value']);
+                    } else {
+                        $builder->whereIn($filter['key'], $filter['value']);
+                    }
+                    continue;
+                }
                 if ($filter['condition'] === '模糊') {
                     $filter['condition'] = 'like';
                     $filter['value'] = "%{$filter['value']}%";
