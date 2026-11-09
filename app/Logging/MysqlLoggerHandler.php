@@ -1,7 +1,6 @@
 <?php
 namespace App\Logging;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
@@ -12,6 +11,19 @@ class MysqlLoggerHandler extends AbstractProcessingHandler
     public function __construct($level = Logger::DEBUG, bool $bubble = true)
     {
         parent::__construct($level, $bubble);
+    }
+
+    public function handle(array $record): bool
+    {
+        if (!$this->isHandling($record)) {
+            return false;
+        }
+        // Skip formatting and database writes for database exceptions.
+        if (($record['context']['exception'] ?? null) instanceof \PDOException) {
+            $this->logDatabaseFailure();
+            return !$this->bubble;
+        }
+        return parent::handle($record);
     }
 
     protected function write(array $record): void
@@ -30,15 +42,25 @@ class MysqlLoggerHandler extends AbstractProcessingHandler
                 'ip' => request()->getClientIp(),
                 'data' => json_encode($record['request_data']) ,
                 'context' => isset($record['context']) ? json_encode($record['context']) : '',
-                'created_at' => strtotime($record['datetime']),
-                'updated_at' => strtotime($record['datetime']),
+                'created_at' => $record['datetime']->getTimestamp(),
+                'updated_at' => $record['datetime']->getTimestamp(),
             ];
 
             LogModel::insert(
                 $log
             );
-        }catch (\Exception $e){
-            Log::channel('daily')->error($e->getMessage().$e->getFile().$e->getTraceAsString());
+        } catch (\Throwable $e) {
+            $this->logDatabaseFailure();
         }
     }
+
+    private function logDatabaseFailure(): void
+    {
+        try {
+            Log::channel('daily')->error('Database failure');
+        } catch (\Throwable $e) {
+            @error_log('Database failure');
+        }
+    }
+
 }
