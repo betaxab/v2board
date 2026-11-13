@@ -39,6 +39,9 @@ class Handler extends ExceptionHandler
      */
     public function report(Throwable $exception)
     {
+        if ($this->isDatabaseConnectionFailure($exception)) {
+            return;
+        }
         parent::report($exception);
     }
 
@@ -53,12 +56,30 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if ($this->isDatabaseConnectionFailure($exception)) {
+            $request->attributes->set('database_connection_failed', true);
+            return response()->json(['message' => 'Database temporarily unavailable'], 503)->header('Retry-After', '5');
+        }
         if ($exception instanceof ViewException) {
             abort(500, "主题渲染失败。如更新主题，参数可能发生变化请重新配置主题后再试。");
         }
         return parent::render($request, $exception);
     }
 
+
+    public function isDatabaseConnectionFailure(Throwable $exception): bool
+    {
+        for ($depth = 0; $exception && $depth < 5; $depth++, $exception = $exception->getPrevious()) {
+            if ($exception instanceof \PDOException) {
+                $state = (string)($exception->errorInfo[0] ?? $exception->getCode());
+                $code = (int)($exception->errorInfo[1] ?? $exception->getCode());
+                if (substr($state, 0, 2) === '08' || in_array($code, [1040, 2002, 2003, 2006, 2013], true)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     protected function convertExceptionToArray(Throwable $e)
     {

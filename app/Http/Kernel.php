@@ -15,6 +15,7 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         \App\Http\Middleware\CORS::class,
+        \App\Http\Middleware\DatabaseCircuit::class,
         \App\Http\Middleware\UAfilter::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
